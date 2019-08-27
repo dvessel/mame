@@ -79,19 +79,23 @@ int configuration_manager::load_settings()
 			throw emu_fatalerror("Could not load controller file %s.cfg", controller);
 	}
 
-	/* next load the defaults file */
-	emu_file file(machine().options().cfg_directory(), OPEN_FLAG_READ);
-	osd_file::error filerr = file.open("default.cfg");
-	osd_printf_verbose("Attempting to parse: default.cfg\n");
-	if (filerr == osd_file::error::NONE)
-		load_xml(file, config_type::DEFAULT);
-
-	/* finally, load the game-specific file */
-	filerr = file.open(machine().basename(), ".cfg");
-	osd_printf_verbose("Attempting to parse: %s.cfg\n",machine().basename());
-	if (filerr == osd_file::error::NONE)
-		loaded = load_xml(file, config_type::GAME);
-
+	// leave settings to frontend
+	if (machine().options().read_cfg())
+	{
+		/* next load the defaults file */
+		emu_file file(machine().options().cfg_directory(), OPEN_FLAG_READ);
+		osd_file::error filerr = file.open("default.cfg");
+		osd_printf_verbose("Attempting to parse: default.cfg\n");
+		if (filerr == osd_file::error::NONE)
+			load_xml(file, config_type::DEFAULT);
+		
+		/* finally, load the game-specific file */
+		filerr = file.open(machine().basename(), ".cfg");
+		osd_printf_verbose("Attempting to parse: %s.cfg\n", machine().basename());
+		if (filerr == osd_file::error::NONE)
+			loaded = load_xml(file, config_type::GAME);
+	}
+	
 	/* loop over all registrants and call their final function */
 	for (auto type : m_typelist)
 		type.load(config_type::FINAL, nullptr);
@@ -107,18 +111,20 @@ void configuration_manager::save_settings()
 	/* loop over all registrants and call their init function */
 	for (auto type : m_typelist)
 		type.save(config_type::INIT, nullptr);
-
-	/* save the defaults file */
-	emu_file file(machine().options().cfg_directory(), OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
-	osd_file::error filerr = file.open("default.cfg");
-	if (filerr == osd_file::error::NONE)
-		save_xml(file, config_type::DEFAULT);
-
-	/* finally, save the game-specific file */
-	filerr = file.open(machine().basename(), ".cfg");
-	if (filerr == osd_file::error::NONE)
-		save_xml(file, config_type::GAME);
-
+	
+	if (machine().options().write_cfg())
+	{
+		/* save the defaults file */
+		emu_file file(machine().options().cfg_directory(), OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
+		osd_file::error filerr = file.open("default.cfg");
+		if (filerr == osd_file::error::NONE)
+			save_xml(file, config_type::DEFAULT);
+		
+		/* finally, save the game-specific file */
+		filerr = file.open(machine().basename(), ".cfg");
+		if (filerr == osd_file::error::NONE)
+			save_xml(file, config_type::GAME);
+	}
 	/* loop over all registrants and call their final function */
 	for (auto type : m_typelist)
 		type.save(config_type::FINAL, nullptr);
