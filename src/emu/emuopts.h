@@ -24,6 +24,10 @@
 #define OPTION_READCONFIG           "readconfig"
 #define OPTION_WRITECONFIG          "writeconfig"
 
+#define OPTION_READCFG               "readcfg"
+#define OPTION_WRITECFG              "writeccfg"
+#define OPTION_HEADLESS              "headless"
+
 // core search path options
 #define OPTION_HOMEPATH             "homepath"
 #define OPTION_MEDIAPATH            "rompath"
@@ -162,6 +166,7 @@
 #define OPTION_BIOS                 "bios"
 #define OPTION_CHEAT                "cheat"
 #define OPTION_SKIP_GAMEINFO        "skip_gameinfo"
+#define OPTION_SKIP_WARNINGS        "skip_warnings"
 #define OPTION_UI_FONT              "uifont"
 #define OPTION_UI                   "ui"
 #define OPTION_RAMSIZE              "ramsize"
@@ -300,6 +305,9 @@ public:
 	// core configuration options
 	bool read_config() const { return bool_value(OPTION_READCONFIG); }
 	bool write_config() const { return bool_value(OPTION_WRITECONFIG); }
+	bool read_cfg() const { return bool_value(OPTION_READCFG); }
+	bool write_cfg() const { return bool_value(OPTION_WRITECFG); }
+	bool headless() const { return bool_value(OPTION_HEADLESS); }
 
 	// core search path options
 	const char *home_path() const { return value(OPTION_HOMEPATH); }
@@ -437,6 +445,7 @@ public:
 	const char *bios() const { return value(OPTION_BIOS); }
 	bool cheat() const { return bool_value(OPTION_CHEAT); }
 	bool skip_gameinfo() const { return bool_value(OPTION_SKIP_GAMEINFO); }
+	bool skip_warnings() const { return bool_value(OPTION_SKIP_WARNINGS); }
 	const char *ui_font() const { return value(OPTION_UI_FONT); }
 	ui_option ui() const { return m_ui; }
 	const char *ram_size() const { return value(OPTION_RAMSIZE); }

@@ -31,6 +31,9 @@ const options_entry emu_options::s_option_entries[] =
 	{ nullptr,                                           nullptr,     OPTION_HEADER,     "CORE CONFIGURATION OPTIONS" },
 	{ OPTION_READCONFIG ";rc",                           "1",         OPTION_BOOLEAN,    "enable loading of configuration files" },
 	{ OPTION_WRITECONFIG ";wc",                          "0",         OPTION_BOOLEAN,    "write configuration to (driver).ini on exit" },
+	{ OPTION_READCFG,                                    "1",         OPTION_BOOLEAN,    "enable loading of configuration (cfg) files" },
+	{ OPTION_WRITECFG,                                   "1",         OPTION_BOOLEAN,    "write configuration to (driver).cfg on exit" },
+	{ OPTION_HEADLESS,                                   "0",         OPTION_BOOLEAN,    "specifies headless mode" },
 
 	// search path options
 	{ nullptr,                                           nullptr,     OPTION_HEADER,     "CORE SEARCH PATH OPTIONS" },
@@ -193,6 +196,7 @@ const options_entry emu_options::s_option_entries[] =
 	{ OPTION_BIOS,                                       nullptr,     OPTION_STRING,     "select the system BIOS to use" },
 	{ OPTION_CHEAT ";c",                                 "0",         OPTION_BOOLEAN,    "enable cheat subsystem" },
 	{ OPTION_SKIP_GAMEINFO,                              "0",         OPTION_BOOLEAN,    "skip displaying the system information screen at startup" },
+	{ OPTION_SKIP_WARNINGS,                              "0",         OPTION_BOOLEAN,    "skip displaying the system warnings at startup" },
 	{ OPTION_UI_FONT,                                    "default",   OPTION_STRING,     "specify a font to use" },
 	{ OPTION_UI,                                         "cabinet",   OPTION_STRING,     "type of UI (simple|cabinet)" },
 	{ OPTION_RAMSIZE ";ram",                             nullptr,     OPTION_STRING,     "size of RAM (if supported by driver)" },
