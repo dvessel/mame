@@ -274,6 +274,10 @@ menu_select_game::menu_select_game(mame_ui_manager &mui, render_container &conta
 
 	// do this after processing the last used filter setting so it overwrites the placeholder
 	load_custom_filters();
+	if (machine().options().headless())
+	{
+		m_persistent_data.filter_data().set_current_filter_type(machine_filter::NOT_MECHANICAL);
+	}
 	m_filter_highlight = m_persistent_data.filter_data().get_current_filter_type();
 
 	if (!moptions.remember_last())
@@ -507,6 +511,11 @@ void menu_select_game::populate(float &customtop, float &custombottom)
 
 	set_switch_image();
 	int old_item_selected = -1;
+
+	if (machine().options().headless())
+	{
+		m_persistent_data.filter_data().set_current_filter_type(machine_filter::NOT_MECHANICAL);
+	}
 
 	if (!isfavorite())
 	{
