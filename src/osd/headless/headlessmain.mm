@@ -19,6 +19,7 @@
 #include "../modules/osdhelper.h"
 #include "public/osd.h"
 #include "modules/lib/osdlib.h"
+#include "modules/lib/osdobj_common.h"
 #import "../../../frontend/mame/mame.h"
 
 // Renderer headers
@@ -29,6 +30,24 @@ NSString *const MAMEErrorDomain = @"org.openemu.mame.ErrorDomain";
 void osd_setup_osd_specific_emu_options(emu_options &opts)
 {
 	[OSD class];
+}
+
+#pragma mark - osd_options
+
+const options_entry osd_options::s_option_entries[] =
+		{
+				{ nullptr,                                nullptr,          OPTION_HEADER,    "OSD VIDEO OPTIONS" },
+// OS X can be trusted to have working hardware OpenGL, so default to it on for the best user experience
+				{ OSDOPTION_VIDEO,                        OSDOPTVAL_AUTO,   OPTION_STRING,    "video output method: " },
+				
+				// End of list
+				{ nullptr }
+		};
+
+osd_options::osd_options()
+		: emu_options()
+{
+	add_entries(osd_options::s_option_entries);
 }
 
 #pragma mark - definition
@@ -43,7 +62,7 @@ public:
 		error,
 	};
 	
-	explicit headless_osd_interface(emu_options &options);
+	explicit headless_osd_interface(osd_options &options);
 	~headless_osd_interface() final;
 	
 	// current state
@@ -103,7 +122,7 @@ public:
 	{ return nullptr; };
 	
 	// osd_output interface ...
-	void output_callback(osd_output_channel channel, const char *msg, va_list args) override;
+	void output_callback(osd_output_channel channel, util::format_argument_pack<std::ostream> const &args) override;
 	
 	bool verbose() const
 	{ return m_print_verbose; }
@@ -119,7 +138,8 @@ protected:
 	
 	// internal state
 	running_machine *m_machine;
-	emu_options &m_options;
+	osd_options &m_options;
+	
 	osd_state m_state;
 	
 	// ui
@@ -152,7 +172,7 @@ static_assert(InputItemID::InputItemID_ABSOLUTE_MAXIMUM == input_item_id::ITEM_I
 
 @implementation OSD
 {
-	emu_options *_options;
+	osd_options *_options;
 	headless_osd_interface *_osd;
 	mame_machine_manager *_manager;
 	machine_config *_config;
@@ -176,10 +196,11 @@ static_assert(InputItemID::InputItemID_ABSOLUTE_MAXIMUM == input_item_id::ITEM_I
 		return nil;
 	}
 	
-	_options = global_alloc(emu_options);
+	_options = global_alloc(osd_options);
 	_options->set_value(OPTION_PLUGINS, 0, OPTION_PRIORITY_HIGH); // disable LUA plugins
 	_options->set_value(OPTION_READCONFIG, 0, OPTION_PRIORITY_HIGH); // disable reading .ini files
 	_options->set_value(OPTION_SAMPLERATE, 48000, OPTION_PRIORITY_HIGH);
+	_options->set_value(OSDOPTION_VIDEO, OSDOPTVAL_NONE, OPTION_PRIORITY_MAXIMUM);
 	// disable throttling as OpenEmu handles frame pacing
 	_options->set_value(OPTION_THROTTLE, 0, OPTION_PRIORITY_HIGH);
 	_options->set_value(OPTION_CHEAT, 1, OPTION_PRIORITY_HIGH);
@@ -702,7 +723,7 @@ OPTION_PROPERTY(LANGUAGEPATH, Language, language)
 
 #pragma mark - construction / destruction
 
-headless_osd_interface::headless_osd_interface(emu_options &options)
+headless_osd_interface::headless_osd_interface(osd_options &options)
 		: m_machine(nullptr), m_options(options), m_state(uninitialized), m_print_verbose(false),
 		  m_fps(60.0), m_target(nullptr), m_buffer(nullptr)
 {
@@ -834,7 +855,7 @@ bool headless_osd_interface::get_font_families(std::string const &font_path,
 
 #pragma mark - output
 
-void headless_osd_interface::output_callback(osd_output_channel channel, const char *msg, va_list args)
+void headless_osd_interface::output_callback(osd_output_channel channel, util::format_argument_pack<std::ostream> const &args)
 {
 	static OSDLogLevel levels[OSD_OUTPUT_CHANNEL_COUNT] = {
 			[OSD_OUTPUT_CHANNEL_ERROR] = OSDLogLevelError,
@@ -850,16 +871,11 @@ void headless_osd_interface::output_callback(osd_output_channel channel, const c
 		return;
 	}
 	
-	size_t len = strlen(msg) - 1;
-	while (isspace(msg[len]) != 0)
-	{
-		len--;
-	}
-	len++;
-	
-	NSString *fmt = [[NSString alloc] initWithBytesNoCopy:const_cast<char *>(msg)
-	                                               length:len
+	auto str = string_format(args);
+	NSString *msg = [[NSString alloc] initWithBytesNoCopy:const_cast<char *>(str.c_str())
+	                                               length:str.length()
 	                                             encoding:NSUTF8StringEncoding
 	                                         freeWhenDone:NO];
-	[m_delegate logLevel:levels[channel] format:fmt args:args];
+	
+	[m_delegate logLevel:levels[channel] message:msg];
 }

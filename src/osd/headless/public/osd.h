@@ -34,7 +34,7 @@ typedef NS_ENUM(NSUInteger, OSDLogLevel)
 @protocol OSDDelegate <NSObject>
 - (void)willInitializeWithBounds:(NSSize)bounds fps:(float)fps aspect:(NSSize)aspect;
 - (void)updateAudioBuffer:(int16_t const *)buffer samples:(NSInteger)samples;
-- (void)logLevel:(OSDLogLevel)level format:(NSString *)fmt args:(va_list)args;
+- (void)logLevel:(OSDLogLevel)level message:(NSString *)msg;
 @end
 
 OE_EXPORTED_CLASS

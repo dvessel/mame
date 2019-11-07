@@ -85,9 +85,9 @@ void osd_break_into_debugger(const char *message)
 //  osd_get_clipboard_text
 //============================================================
 
-char *osd_get_clipboard_text()
+std::string osd_get_clipboard_text()
 {
-	return nullptr;
+	return "";
 }
 
 
@@ -100,3 +100,11 @@ int osd_getpid()
 	return getpid();
 }
 
+//============================================================
+//  osd_set_aggressive_input_focus
+//============================================================
+
+void osd_set_aggressive_input_focus(bool aggressive_focus)
+{
+	// dummy implementation for now
+}

@@ -39,6 +39,7 @@ CMakeLists:
 
 ```cmake
 cmake_minimum_required(VERSION 3.14.1)
+project(mametiny_headless)
 set (CMAKE_CXX_STANDARD 14)
 
 find_program(CCACHE_FOUND ccache)
@@ -85,7 +86,6 @@ include_directories(../../../../../generated/resource)
 include_directories(../../../../../../3rdparty/zlib)
 include_directories(../../../../../../3rdparty/libflac/include)
 include_directories(../../../../../../src/osd/modules/render)
-add_definitions(-D__HEADLESS__)
 add_definitions(-DPTR64=1)
 add_definitions(-DCRLF=2)
 add_definitions(-DLSB_FIRST)
