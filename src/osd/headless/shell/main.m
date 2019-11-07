@@ -33,15 +33,15 @@
 
 }
 
-- (void)logLevel:(OSDLogLevel)level format:(NSString *)fmt args:(va_list)args
+- (void)logLevel:(OSDLogLevel)level message:(NSString *)msg
 {
-	NSLogv(fmt, args);
+	NSLog(@"%@", (msg));
 }
 @end
 
 int main(int argc, char *argv[])
 {
-#if 0
+#if 1
 	char const * path = "cmake-build-headless-dbg/build/projects/headless/mametiny/cmake/mametiny/libmametiny_headless.dylib";
 #else
 	char const * path = "mamedummy_headless.dylib";
@@ -53,10 +53,10 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 	
-	Class driversCLASS = NSClassFromString(@"Drivers");
+	//Class driversCLASS = NSClassFromString(@"Drivers");
 	
-	Drivers *d = (Drivers *)[driversCLASS new];
-	[d listXML:stdout dtd:YES patterns:@[@"col*"]];
+	//Drivers *d = (Drivers *)[driversCLASS new];
+	//[d writeXMLIncludeDTD:YES patterns:@[@"col*"]];
 	
 //	char *buf;
 //	size_t len;
@@ -76,17 +76,17 @@ int main(int argc, char *argv[])
 		OSD *shared = [osdCLASS shared];
 		shared.delegate = [[MyDelegate alloc] initWithOSD:shared];
 		shared.verboseOutput = NO;
-		[shared setBasePath:@"/Volumes/Data/games/colecovision"];
+		[shared setBasePath:@"/Volumes/GameData/mame"];
 		[shared setBuffer:malloc(2048*2048*4) size:NSMakeSize(2048, 2048)];
 		
 		NSError *err;
-		BOOL res = [shared loadDriver:@"coleco" error:&err];
+		BOOL res = [shared loadGame:@"targ" error:&err];
 		if (!res)
 		{
 			printf("driver not found\n");
 		}
 		
-		res = [shared loadSoftware:@"dkong" error:&err];
+		//res = [shared loadSoftware:@"dkong" error:&err];
 		
 		printf("supports save: %s\n", shared.supportsSave ? "Y" : "N");
 		

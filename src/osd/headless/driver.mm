@@ -4,7 +4,7 @@
 
 @implementation Drivers
 
-- (void)listXML:(FILE *)out dtd:(BOOL)dtd patterns:(NSArray<NSString *> *)patterns
+- (void)writeXMLIncludeDTD:(BOOL)dtd patterns:(NSArray<NSString *> *)patterns
 {
 	std::vector<std::string> args;
 	args.reserve(patterns.count);
@@ -15,8 +15,8 @@
 	
 	emu_options options;
 	info_xml_creator creator(options, dtd);
-	creator.output(out, args);
-	fflush(out);
+	creator.output(std::cout, args);
+	std::cout.flush();
 }
 
 @end
