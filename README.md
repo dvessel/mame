@@ -2,19 +2,31 @@
 
 ## Building .dylib
 
-### arcade release build:
+### arcade (MAME)
+
+#### release build:
 
 ```sh
 $ make macosx_x64_clang OSD="headless" verbose=1 TARGETOS="macosx" CONFIG="headless-rel" TARGET=mame SUBTARGET=arcade -j8
 ```
 
-### arcade release build (with ccache):
+#### release build (with ccache):
 
 ```sh
 $ make macosx_x64_clang CC='/usr/local/bin/ccache clang' CXX='/usr/local/bin/ccache clang++' OSD="headless" PRECOMPILE=0 verbose=1 TARGETOS="macosx" CONFIG="headless-rel" TARGET=mame SUBTARGET=arcade -j8
 ```
 
 `PRECOMPILE=0` ensures precompiled headers are disabled, as ccache has limited compatibility with this feature.
+
+### mess (consoles)
+
+### dummy (ColecoVision) (with ccache):
+
+```sh
+make macosx_x64_clang CC='/usr/local/bin/ccache clang' CXX='/usr/local/bin/ccache clang++' OSD="headless" PRECOMPILE=0 OPTIMIZE=0 verbose=1 TARGETOS="macosx" CONFIG="headless-dbg" TARGET=mame SUBTARGET=dummy -j6
+```
+
+`OPTIMIZE=0` ensures -O0
 
 
 ## Generating CMake:
