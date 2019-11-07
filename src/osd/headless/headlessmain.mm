@@ -25,6 +25,8 @@
 // Renderer headers
 #include "rendersw.hxx"
 
+#define NSSTRING_NO_COPY(x) [[NSString alloc] initWithBytesNoCopy:(void *)x length:strlen(x) encoding:NSUTF8StringEncoding freeWhenDone:NO];
+
 NSString *const MAMEErrorDomain = @"org.openemu.mame.ErrorDomain";
 
 void osd_setup_osd_specific_emu_options(emu_options &opts)
@@ -177,6 +179,7 @@ static_assert(InputItemID::InputItemID_ABSOLUTE_MAXIMUM == input_item_id::ITEM_I
 	mame_machine_manager *_manager;
 	machine_config *_config;
 	running_machine *_machine;
+	game_driver const * _gameDriver;
 	BOOL _supportsSave;
 	NSString *_basePath;
 	
@@ -348,14 +351,33 @@ OPTION_PROPERTY(CFG_DIRECTORY, CFG, CFG)
 	return [self _initializeGame:error];
 }
 
+- (NSString *)driverFullName
+{
+	if (_gameDriver == nil)
+	{
+		return @"";
+	}
+	
+	return NSSTRING_NO_COPY(_gameDriver->type.fullname());
+}
+
+- (NSString *)driverShortName
+{
+	if (_gameDriver == nil)
+	{
+		return @"";
+	}
+	
+	return NSSTRING_NO_COPY(_gameDriver->type.shortname());
+}
+
 - (BOOL)loadDriver:(NSString *)driver error:(NSError **)error
 {
 	_driverName = driver;
 	
-	driver_enumerator drivlist(*_options, _driverName.UTF8String);
-	media_auditor auditor(drivlist);
+	driver_enumerator enumerator(*_options, _driverName.UTF8String);
 	
-	if (drivlist.count() == 0)
+	if (enumerator.count() == 0)
 	{
 		NSDictionary<NSErrorUserInfoKey, id> *info = @{
 				NSLocalizedDescriptionKey: NSLocalizedString(@"Invalid driver", "Driver not supported"),
@@ -364,39 +386,31 @@ OPTION_PROPERTY(CFG_DIRECTORY, CFG, CFG)
 		return NO;
 	}
 	
-	if (drivlist.count() > 1)
+	enumerator.next();
+	_gameDriver = &enumerator.driver();
+	
+	media_auditor auditor(enumerator);
+	media_auditor::summary summary = auditor.audit_media(AUDIT_VALIDATE_FAST);
+	if (summary == media_auditor::INCORRECT || summary == media_auditor::NOTFOUND)
 	{
-		while (drivlist.next())
+		std::ostringstream output;
+		auditor.summarize(enumerator.driver().name, &output);
+		if (error != nil)
 		{
-			media_auditor::summary summary = auditor.audit_media(AUDIT_VALIDATE_FAST);
-			if (summary == media_auditor::CORRECT || summary == media_auditor::BEST_AVAILABLE)
-			{
-				break;
-			}
-			
-			std::ostringstream output;
-			auditor.summarize(drivlist.driver().name, &output);
-			if (error != nil)
-			{
-				NSString *auditOutput = @(output.str().c_str());
-				NSDictionary<NSErrorUserInfoKey, id> *info = @{
-						NSLocalizedDescriptionKey: NSLocalizedString(@"Audit failed", "audit failed"),
-						NSLocalizedFailureReasonErrorKey: auditOutput,
-				};
-				*error = [NSError errorWithDomain:MAMEErrorDomain code:MAMEErrorAuditFailed userInfo:info];
-			}
-			
-			osd_printf_error("audit failed: %s", output.str().c_str());
-			
-			return NO;
+			NSString *auditOutput = @(output.str().c_str());
+			NSDictionary<NSErrorUserInfoKey, id> *info = @{
+					NSLocalizedDescriptionKey: NSLocalizedString(@"Audit failed", "audit failed"),
+					NSLocalizedFailureReasonErrorKey: auditOutput,
+			};
+			*error = [NSError errorWithDomain:MAMEErrorDomain code:MAMEErrorAuditFailed userInfo:info];
 		}
-	} else
-	{
-		drivlist.next();
+		
+		osd_printf_error("audit failed: %s", output.str().c_str());
+		
+		return NO;
 	}
 	
-	auto proposed_system = &driver_list::driver(drivlist.current());
-	if (proposed_system->flags & (MACHINE_CLICKABLE_ARTWORK | MACHINE_REQUIRES_ARTWORK))
+	if (_gameDriver->flags & (MACHINE_CLICKABLE_ARTWORK | MACHINE_REQUIRES_ARTWORK))
 	{
 		NSDictionary<NSErrorUserInfoKey, id> *info = @{
 				NSLocalizedDescriptionKey: NSLocalizedString(
@@ -406,7 +420,7 @@ OPTION_PROPERTY(CFG_DIRECTORY, CFG, CFG)
 		return NO;
 	}
 	
-	if (proposed_system->flags & MACHINE_MECHANICAL)
+	if (_gameDriver->flags & MACHINE_MECHANICAL)
 	{
 		NSDictionary<NSErrorUserInfoKey, id> *info = @{
 				NSLocalizedDescriptionKey: NSLocalizedString(@"Mechanical systems are not supported",
@@ -513,6 +527,7 @@ OPTION_PROPERTY(CFG_DIRECTORY, CFG, CFG)
 
 - (void)_freeMachine
 {
+	_gameDriver = nil;
 	_joystick = nil;
 	_mouse = nil;
 	_keyboard = nil;
@@ -541,22 +556,22 @@ OPTION_PROPERTY(CFG_DIRECTORY, CFG, CFG)
 	_manager->clear_new_driver_pending();
 	
 	// if no driver, use the internal empty driver
-	const game_driver *system = _options->system();
-	if (system == nullptr)
+	_gameDriver = _options->system();
+	if (_gameDriver == nullptr)
 	{
-		system = &GAME_NAME(___empty);
+		_gameDriver = &GAME_NAME(___empty);
 	}
 	
 	// otherwise, perform validity checks before anything else
-	_isEmpty = (system == &GAME_NAME(___empty));
+	_isEmpty = (_gameDriver == &GAME_NAME(___empty));
 	if (!_isEmpty)
 	{
 		validity_checker valid(*_options);
 		valid.set_verbose(false);
-		valid.check_shared_source(*system);
+		valid.check_shared_source(*_gameDriver);
 	}
 	
-	_config = global_alloc(machine_config(*system, *_options));
+	_config = global_alloc(machine_config(*_gameDriver, *_options));
 	_machine = global_alloc(running_machine(*_config, *_manager));
 	_manager->set_machine(_machine);
 	
@@ -625,8 +640,6 @@ OPTION_PROPERTY(CFG_DIRECTORY, CFG, CFG)
 }
 
 @end
-
-#define NSSTRING_NO_COPY(x) [[NSString alloc] initWithBytesNoCopy:(void *)x length:strlen(x) encoding:NSUTF8StringEncoding freeWhenDone:NO];
 
 @implementation InputDeviceItem
 @end
