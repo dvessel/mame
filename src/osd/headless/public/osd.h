@@ -95,6 +95,8 @@ OE_EXPORTED_CLASS
 /*! name of current driver after calling loadGame:
  * */
 @property(nonatomic, readonly) NSString *driverName;
+@property(nonatomic, readonly) NSString *driverFullName;
+@property(nonatomic, readonly) NSString *driverShortName;
 @property(nonatomic, readonly) NSString *softwareName;
 
 /*! maximum size of render buffer in pixels
