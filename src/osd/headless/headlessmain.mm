@@ -47,7 +47,8 @@ public:
 	~headless_osd_interface() final;
 	
 	// current state
-	osd_state state() const { return m_state; };
+	osd_state state() const
+	{ return m_state; };
 	
 	// general overridables
 	void init(running_machine &machine) override;
@@ -187,6 +188,7 @@ static_assert(InputItemID::InputItemID_ABSOLUTE_MAXIMUM == input_item_id::ITEM_I
 	_options->set_value(OPTION_HEADLESS, 1, OPTION_PRIORITY_HIGH);
 	_options->set_value(OPTION_READCFG, 0, OPTION_PRIORITY_HIGH);
 	_options->set_value(OPTION_WRITECFG, 0, OPTION_PRIORITY_HIGH);
+	_options->set_value(OPTION_BIOS, "default", OPTION_PRIORITY_HIGH);
 	
 	_osd = global_alloc(headless_osd_interface(*_options));
 	
@@ -322,41 +324,68 @@ OPTION_PROPERTY(LANGUAGEPATH, Language, language)
 
 - (BOOL)loadGame:(NSString *)name error:(NSError **)error
 {
-	_driverName = name;
+	BOOL res = [self loadDriver:name error:error];
+	if (!res)
+	{
+		return NO;
+	}
+	
+	return [self _initializeGame:error];
+}
+
+- (BOOL)loadDriver:(NSString *)driver error:(NSError **)error
+{
+	_driverName = driver;
 	
 	driver_enumerator drivlist(*_options, _driverName.UTF8String);
 	media_auditor auditor(drivlist);
 	
-	while (drivlist.next())
+	if (drivlist.count() == 0)
 	{
-		media_auditor::summary summary = auditor.audit_media(AUDIT_VALIDATE_FAST);
-		if (summary == media_auditor::CORRECT || summary == media_auditor::BEST_AVAILABLE)
-		{
-			break;
-		}
-		
-		std::ostringstream output;
-		auditor.summarize(drivlist.driver().name, &output);
-		if (error != nil)
-		{
-			NSString *auditOutput = @(output.str().c_str());
-			NSDictionary<NSErrorUserInfoKey, id> *info = @{
-					NSLocalizedDescriptionKey: NSLocalizedString(@"Audit failed", "audit failed"),
-					NSLocalizedFailureReasonErrorKey: auditOutput,
-			};
-			*error = [NSError errorWithDomain:MAMEErrorDomain code:MAMEErrorAuditFailed userInfo:info];
-		}
-
-		osd_printf_error("audit failed: %s", output.str().c_str());
-		
+		NSDictionary<NSErrorUserInfoKey, id> *info = @{
+				NSLocalizedDescriptionKey: NSLocalizedString(@"Invalid driver", "Driver not supported"),
+		};
+		*error = [NSError errorWithDomain:MAMEErrorDomain code:MAMEErrorInvalidDriver userInfo:info];
 		return NO;
+	}
+	
+	if (drivlist.count() > 1)
+	{
+		while (drivlist.next())
+		{
+			media_auditor::summary summary = auditor.audit_media(AUDIT_VALIDATE_FAST);
+			if (summary == media_auditor::CORRECT || summary == media_auditor::BEST_AVAILABLE)
+			{
+				break;
+			}
+			
+			std::ostringstream output;
+			auditor.summarize(drivlist.driver().name, &output);
+			if (error != nil)
+			{
+				NSString *auditOutput = @(output.str().c_str());
+				NSDictionary<NSErrorUserInfoKey, id> *info = @{
+						NSLocalizedDescriptionKey: NSLocalizedString(@"Audit failed", "audit failed"),
+						NSLocalizedFailureReasonErrorKey: auditOutput,
+				};
+				*error = [NSError errorWithDomain:MAMEErrorDomain code:MAMEErrorAuditFailed userInfo:info];
+			}
+			
+			osd_printf_error("audit failed: %s", output.str().c_str());
+			
+			return NO;
+		}
+	} else
+	{
+		drivlist.next();
 	}
 	
 	auto proposed_system = &driver_list::driver(drivlist.current());
 	if (proposed_system->flags & (MACHINE_CLICKABLE_ARTWORK | MACHINE_REQUIRES_ARTWORK))
 	{
 		NSDictionary<NSErrorUserInfoKey, id> *info = @{
-				NSLocalizedDescriptionKey: NSLocalizedString(@"Systems which require artwork to operate are not supported", "System not supported"),
+				NSLocalizedDescriptionKey: NSLocalizedString(
+						@"Systems which require artwork to operate are not supported", "System not supported"),
 		};
 		*error = [NSError errorWithDomain:MAMEErrorDomain code:MAMEErrorUnsupportedROM userInfo:info];
 		return NO;
@@ -365,7 +394,8 @@ OPTION_PROPERTY(LANGUAGEPATH, Language, language)
 	if (proposed_system->flags & MACHINE_MECHANICAL)
 	{
 		NSDictionary<NSErrorUserInfoKey, id> *info = @{
-				NSLocalizedDescriptionKey: NSLocalizedString(@"Mechanical systems are not supported", "System not supported"),
+				NSLocalizedDescriptionKey: NSLocalizedString(@"Mechanical systems are not supported",
+				                                             "System not supported"),
 		};
 		*error = [NSError errorWithDomain:MAMEErrorDomain code:MAMEErrorUnsupportedROM userInfo:info];
 		return NO;
@@ -373,7 +403,24 @@ OPTION_PROPERTY(LANGUAGEPATH, Language, language)
 	
 	try
 	{
-		_options->set_system_name(name.UTF8String);
+		_options->set_system_name(driver.UTF8String);
+	}
+	catch (options_error_exception &ex)
+	{
+		// NOTE(sgc): this should never happen, given we've validated the system
+		return NO;
+	}
+	
+	return YES;
+}
+
+- (BOOL)loadSoftware:(NSString *)name error:(NSError **)error
+{
+	_softwareName = name;
+	try
+	{
+		_options->set_software(_softwareName.UTF8String);
+		
 	}
 	catch (options_error_exception &ex)
 	{
@@ -383,6 +430,7 @@ OPTION_PROPERTY(LANGUAGEPATH, Language, language)
 	
 	return [self _initializeGame:error];
 }
+
 
 - (void)unload
 {
@@ -497,8 +545,9 @@ OPTION_PROPERTY(LANGUAGEPATH, Language, language)
 	_machine = global_alloc(running_machine(*_config, *_manager));
 	_manager->set_machine(_machine);
 	
-	_machine->headless_init(_isEmpty);
-	if (_osd->state() == headless_osd_interface::osd_state::error)
+	// TODO(sgc): this could error due to invalid BIOS; need to extract this properly
+	int ok = _machine->headless_init(_isEmpty);
+	if (ok != EMU_ERR_NONE || _osd->state() == headless_osd_interface::osd_state::error)
 	{
 		[self _freeMachine];
 		

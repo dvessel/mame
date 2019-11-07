@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
 #if 0
 	char const * path = "cmake-build-headless-dbg/build/projects/headless/mametiny/cmake/mametiny/libmametiny_headless.dylib";
 #else
-	char const * path = "mamearcade_headless.dylib";
+	char const * path = "mamedummy_headless.dylib";
 #endif
 	void *handle = dlopen(path, RTLD_LAZY);
 	if (handle == nil)
@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
 	Class driversCLASS = NSClassFromString(@"Drivers");
 	
 	Drivers *d = (Drivers *)[driversCLASS new];
-	[d listXML:stdout dtd:YES patterns:@[@"gold*"]];
+	[d listXML:stdout dtd:YES patterns:@[@"col*"]];
 	
 //	char *buf;
 //	size_t len;
@@ -76,14 +76,17 @@ int main(int argc, char *argv[])
 		OSD *shared = [osdCLASS shared];
 		shared.delegate = [[MyDelegate alloc] initWithOSD:shared];
 		shared.verboseOutput = NO;
-		[shared setBasePath:@"/Volumes/Data/games/mame"];
+		[shared setBasePath:@"/Volumes/Data/games/colecovision"];
 		[shared setBuffer:malloc(2048*2048*4) size:NSMakeSize(2048, 2048)];
 		
-		BOOL res = [shared loadGame:@"targ" error:nil];
+		NSError *err;
+		BOOL res = [shared loadDriver:@"coleco" error:&err];
 		if (!res)
 		{
-			printf("game not found\n");
+			printf("driver not found\n");
 		}
+		
+		res = [shared loadSoftware:@"dkong" error:&err];
 		
 		printf("supports save: %s\n", shared.supportsSave ? "Y" : "N");
 		
