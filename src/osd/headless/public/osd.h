@@ -76,6 +76,8 @@ OE_EXPORTED_CLASS
 @property(nonatomic) NSString *crossHairPath;
 @property(nonatomic) NSString *pluginsPath;
 @property(nonatomic) NSString *languagePath;
+@property(nonatomic) NSString *NVRAMPath;
+@property(nonatomic) NSString *CFGPath;
 
 /*! sets the default base path for option paths
  *
