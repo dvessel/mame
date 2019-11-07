@@ -309,7 +309,8 @@ int running_machine::headless_init(bool quiet)
 		{
 			m_logfile = std::make_unique<emu_file>(OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
 			osd_file::error filerr = m_logfile->open("error.log");
-			assert_always(filerr == osd_file::error::NONE, "unable to open log file");
+			if (filerr != osd_file::error::NONE)
+				throw emu_fatalerror("running_machine::run: unable to open log file");
 			
 			using namespace std::placeholders;
 			add_logerror_callback(std::bind(&running_machine::logfile_callback, this, _1));
@@ -319,6 +320,7 @@ int running_machine::headless_init(bool quiet)
 		start();
 		
 		// load the configuration settings
+		manager().before_load_settings(*this);
 		m_configuration->load_settings();
 		
 		// disallow save state registrations starting here.
