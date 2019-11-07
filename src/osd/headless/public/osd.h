@@ -12,6 +12,9 @@ typedef NS_ERROR_ENUM(MAMEErrorDomain, MAMEError)
 {
 	MAMEErrorUnsupportedROM = -1,
 	MAMEErrorAuditFailed    = -2,
+	MAMEErrorInvalidDriver  = -3,
+	MAMEErrorMissingFiles   = -4,
+	MAMEErrorFatal          = -5,
 };
 
 @class OSD;
@@ -90,12 +93,15 @@ OE_EXPORTED_CLASS
 /*! name of current driver after calling loadGame:
  * */
 @property(nonatomic, readonly) NSString *driverName;
+@property(nonatomic, readonly) NSString *softwareName;
 
 /*! maximum size of render buffer in pixels
  */
 @property(nonatomic) NSSize maxBufferSize;
 
 - (BOOL)loadGame:(NSString *)name error:(NSError **)error;
+- (BOOL)loadDriver:(NSString *)driver error:(NSError **)error;
+- (BOOL)loadSoftware:(NSString *)name error:(NSError **)error;
 - (void)unload;
 
 #pragma mark - save / load
