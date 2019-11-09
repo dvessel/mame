@@ -76,23 +76,29 @@ int main(int argc, char *argv[])
 		OSD *shared = [osdCLASS shared];
 		shared.delegate = [[MyDelegate alloc] initWithOSD:shared];
 		shared.verboseOutput = NO;
-		[shared setBasePath:@"/Volumes/GameData/mame"];
+		[shared.options setBasePath:@"/Volumes/GameData/mame"];
 		[shared setBuffer:malloc(2048*2048*4) size:NSMakeSize(2048, 2048)];
 		
 		NSError *err;
-		BOOL res = [shared loadGame:@"targ" error:&err];
+		AuditResult *ar;
+		BOOL res = [shared loadGame:@"targ" withAuditResult:&ar error:&err];
 		if (!res)
 		{
-			printf("driver not found\n");
+		
 		}
+		
+		printf("state size: %lu\n", shared.stateSize);
+		printf("audit result:\n%s\n", ar.description.UTF8String);
 		
 		//res = [shared loadSoftware:@"dkong" error:&err];
 		
 		printf("supports save: %s\n", shared.supportsSave ? "Y" : "N");
 		
-		for (int i = 0; i < 50; i++) {
+		for (int i = 0; i < 500; i++) {
 			[shared execute];
 		}
+		[shared unload];
+		
 	} @finally
 	{
 		dlclose(handle);

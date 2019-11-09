@@ -64,10 +64,10 @@ cmake_minimum_required(VERSION 2.8.4)
 project(mametiny)
 set(
 source_list
-  ${CMAKE_CURRENT_SOURCE_DIR}}/../../../../../generated/mame/tiny/drivlist.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../generated/mame/tiny/drivlist.cpp
   ../../../../../generated/version.cpp
   ../../../../../../src/mame/mame.cpp
-  ../../../../../../src/osd/headless/headlessmain.mm
+  ../../../../../../src/osd/headless/headless.mm
   ../../../../../../src/osd/headless/driver.mm
   ../../../../../../src/osd/osdnet.cpp
   ../../../../../../src/osd/osdnet.h
