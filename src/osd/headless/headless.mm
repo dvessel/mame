@@ -14,10 +14,12 @@
 #include "render.h"
 #include "ui/uimain.h"
 #include <inputdev.h>
+#include <os/log.h>
 
 // OSD headers
 #include "../modules/osdhelper.h"
-#include "public/osd.h"
+#include "public/headless.h"
+#include "options+private.h"
 #include "modules/lib/osdlib.h"
 #include "modules/lib/osdobj_common.h"
 #import "../../../frontend/mame/mame.h"
@@ -25,7 +27,26 @@
 // Renderer headers
 #include "rendersw.hxx"
 
-#define NSSTRING_NO_COPY(x) [[NSString alloc] initWithBytesNoCopy:(void *)x length:strlen(x) encoding:NSUTF8StringEncoding freeWhenDone:NO];
+#define NSSTRING_NO_COPY(x) [[NSString alloc] initWithBytesNoCopy:(void *)(x) length:strlen(x) encoding:NSUTF8StringEncoding freeWhenDone:NO];
+
+// static assertions
+
+#define OE_STATIC_ASSERT(_condition, ...) static_assert(_condition, "" __VA_ARGS__)
+
+#define OE_ENUM_CHECK(_enum, _src, _c99enumcount) \
+    OE_STATIC_ASSERT(_enum::_src == _enum(_c99enumcount) )
+
+// sanity checks
+
+OE_ENUM_CHECK(media_auditor::summary, NOTFOUND, AuditSummaryNotFound);
+
+OE_ENUM_CHECK(media_auditor::audit_status, GOOD, AuditStatusGood);
+OE_ENUM_CHECK(media_auditor::audit_status, UNVERIFIED, AuditStatusUnverified);
+
+OE_ENUM_CHECK(media_auditor::audit_substatus, GOOD, AuditSubstatusGood);
+OE_ENUM_CHECK(media_auditor::audit_substatus, UNVERIFIED, AuditSubstatusUnverified);
+
+static os_log_t OE_LOG;
 
 NSString *const MAMEErrorDomain = @"org.openemu.mame.ErrorDomain";
 
@@ -38,12 +59,9 @@ void osd_setup_osd_specific_emu_options(emu_options &opts)
 
 const options_entry osd_options::s_option_entries[] =
 		{
-				{ nullptr,                                nullptr,          OPTION_HEADER,    "OSD VIDEO OPTIONS" },
-// OS X can be trusted to have working hardware OpenGL, so default to it on for the best user experience
-				{ OSDOPTION_VIDEO,                        OSDOPTVAL_AUTO,   OPTION_STRING,    "video output method: " },
-				
-				// End of list
-				{ nullptr }
+				{nullptr, nullptr,                OPTION_HEADER, "OSD VIDEO OPTIONS"},
+				{OSDOPTION_VIDEO, OSDOPTVAL_AUTO, OPTION_STRING, "video output method: "},
+				{nullptr}
 		};
 
 osd_options::osd_options()
@@ -161,6 +179,11 @@ protected:
 
 #pragma mark - Other categories
 
+@interface AuditResult ()
+@property (nonatomic, readonly) game_driver const *gameDriver;
++ (instancetype)auditResultWithOptions:(Options *)options driverName:(NSString *)driverName;
+@end
+
 @interface InputClass ()
 - (instancetype)initWithClass:(input_class *)clas;
 @end
@@ -174,12 +197,12 @@ static_assert(InputItemID::InputItemID_ABSOLUTE_MAXIMUM == input_item_id::ITEM_I
 
 @implementation OSD
 {
-	osd_options *_options;
+	Options *_options;
 	headless_osd_interface *_osd;
 	mame_machine_manager *_manager;
 	machine_config *_config;
 	running_machine *_machine;
-	game_driver const * _gameDriver;
+	game_driver const *_gameDriver;
 	BOOL _supportsSave;
 	NSString *_basePath;
 	
@@ -191,6 +214,11 @@ static_assert(InputItemID::InputItemID_ABSOLUTE_MAXIMUM == input_item_id::ITEM_I
 	bool _isEmpty;
 }
 
++ (void)initialize
+{
+	OE_LOG = os_log_create("org.mamedev.mame", "");
+}
+
 - (instancetype)init
 {
 	self = [super init];
@@ -199,24 +227,13 @@ static_assert(InputItemID::InputItemID_ABSOLUTE_MAXIMUM == input_item_id::ITEM_I
 		return nil;
 	}
 	
-	_options = global_alloc(osd_options);
-	_options->set_value(OPTION_PLUGINS, 0, OPTION_PRIORITY_HIGH); // disable LUA plugins
-	_options->set_value(OPTION_READCONFIG, 0, OPTION_PRIORITY_HIGH); // disable reading .ini files
-	_options->set_value(OPTION_SAMPLERATE, 48000, OPTION_PRIORITY_HIGH);
-	_options->set_value(OSDOPTION_VIDEO, OSDOPTVAL_NONE, OPTION_PRIORITY_MAXIMUM);
-	// disable throttling as OpenEmu handles frame pacing
-	_options->set_value(OPTION_THROTTLE, 0, OPTION_PRIORITY_HIGH);
-	_options->set_value(OPTION_CHEAT, 1, OPTION_PRIORITY_HIGH);
-	_options->set_value(OPTION_SKIP_GAMEINFO, 1, OPTION_PRIORITY_HIGH);
-	_options->set_value(OPTION_SKIP_WARNINGS, 1, OPTION_PRIORITY_HIGH);
-	_options->set_value(OPTION_HEADLESS, 1, OPTION_PRIORITY_HIGH);
-	_options->set_value(OPTION_READCFG, 0, OPTION_PRIORITY_HIGH);
-	_options->set_value(OPTION_WRITECFG, 0, OPTION_PRIORITY_HIGH);
-	_options->set_value(OPTION_BIOS, "default", OPTION_PRIORITY_HIGH);
+	_options = [Options new];
 	
-	_osd = global_alloc(headless_osd_interface(*_options));
+	osd_options *opt = _options.options;
 	
-	_manager = mame_machine_manager::instance(*_options, *_osd);
+	_osd = global_alloc(headless_osd_interface(*opt));
+	
+	_manager = mame_machine_manager::instance(*_options.options, *_osd);
 	_manager->start_http_server();
 	_manager->start_luaengine();
 	
@@ -231,7 +248,6 @@ static_assert(InputItemID::InputItemID_ABSOLUTE_MAXIMUM == input_item_id::ITEM_I
 	[self _freeMachine];
 	global_free(_manager);
 	global_free(_osd);
-	global_free(_options);
 }
 
 - (InputClass *)joystick
@@ -277,78 +293,10 @@ static_assert(InputItemID::InputItemID_ABSOLUTE_MAXIMUM == input_item_id::ITEM_I
 	return (BOOL) _osd->verbose();
 }
 
-#pragma mark - paths
-
-#define OPTION_PROPERTY(OPT, SET, GET) \
-- (void)set##SET##Path:(NSString *)path \
-{ \
-    _options->set_value(OPTION_ ## OPT, path.UTF8String, OPTION_PRIORITY_HIGH); \
-} \
-\
-- (NSString *)GET##Path \
-{ \
-    return [NSString stringWithUTF8String:_options->value(OPTION_ ## OPT)]; \
-} \
-
-
-OPTION_PROPERTY(MEDIAPATH, Roms, roms)
-OPTION_PROPERTY(HASHPATH, Hash, hash)
-OPTION_PROPERTY(SAMPLEPATH, Samples, samples)
-OPTION_PROPERTY(ARTPATH, Art, art)
-OPTION_PROPERTY(CTRLRPATH, Controller, controller)
-OPTION_PROPERTY(CHEATPATH, Cheat, cheat)
-OPTION_PROPERTY(CROSSHAIRPATH, CrossHair, crossHair)
-OPTION_PROPERTY(PLUGINSPATH, Plugins, plugins)
-OPTION_PROPERTY(LANGUAGEPATH, Language, language)
-OPTION_PROPERTY(NVRAM_DIRECTORY, NVRAM, NVRAM)
-OPTION_PROPERTY(CFG_DIRECTORY, CFG, CFG)
-
-#undef OPTION_PROPERTY
-
-- (void)setBasePath:(NSString *)path
-{
-	_basePath = [path copy];
-	
-	_options->set_value(OPTION_MEDIAPATH, [NSString pathWithComponents:@[path, @"roms"]].UTF8String,
-	                    OPTION_PRIORITY_HIGH);
-	_options->set_value(OPTION_HASHPATH, [NSString pathWithComponents:@[path, @"hash"]].UTF8String,
-	                    OPTION_PRIORITY_HIGH);
-	_options->set_value(OPTION_SAMPLEPATH, [NSString pathWithComponents:@[path, @"samples"]].UTF8String,
-	                    OPTION_PRIORITY_HIGH);
-	_options->set_value(OPTION_ARTPATH, [NSString pathWithComponents:@[path, @"artwork"]].UTF8String,
-	                    OPTION_PRIORITY_HIGH);
-	_options->set_value(OPTION_CTRLRPATH, [NSString pathWithComponents:@[path, @"ctrlr"]].UTF8String,
-	                    OPTION_PRIORITY_HIGH);
-	_options->set_value(OPTION_CHEATPATH, [NSString pathWithComponents:@[path, @"cheat"]].UTF8String,
-	                    OPTION_PRIORITY_HIGH);
-	_options->set_value(OPTION_CROSSHAIRPATH, [NSString pathWithComponents:@[path, @"crosshair"]].UTF8String,
-	                    OPTION_PRIORITY_HIGH);
-	_options->set_value(OPTION_PLUGINSPATH, [NSString pathWithComponents:@[path, @"plugins"]].UTF8String,
-	                    OPTION_PRIORITY_HIGH);
-	_options->set_value(OPTION_LANGUAGEPATH, [NSString pathWithComponents:@[path, @"language"]].UTF8String,
-	                    OPTION_PRIORITY_HIGH);
-	
-	_options->set_value(OPTION_NVRAM_DIRECTORY, [NSString pathWithComponents:@[path, @"nvram"]].UTF8String,
-	                    OPTION_PRIORITY_HIGH);
-	_options->set_value(OPTION_CFG_DIRECTORY, [NSString pathWithComponents:@[path, @"cfg"]].UTF8String,
-	                    OPTION_PRIORITY_HIGH);
-}
-
 - (void)setBuffer:(void *)buffer size:(NSSize)size
 {
 	auto dim = osd_dim(static_cast<int>(size.width), static_cast<int>(size.height));
 	_osd->set_buffer(buffer, dim);
-}
-
-- (BOOL)loadGame:(NSString *)name error:(NSError **)error
-{
-	BOOL res = [self loadDriver:name error:error];
-	if (!res)
-	{
-		return NO;
-	}
-	
-	return [self _initializeGame:error];
 }
 
 - (NSString *)driverFullName
@@ -371,44 +319,56 @@ OPTION_PROPERTY(CFG_DIRECTORY, CFG, CFG)
 	return NSSTRING_NO_COPY(_gameDriver->type.shortname());
 }
 
-- (BOOL)loadDriver:(NSString *)driver error:(NSError **)error
+- (BOOL)loadGame:(NSString *)name withAuditResult:(AuditResult **)result error:(NSError **)error
+{
+	BOOL res = [self loadDriver:name withAuditResult:result error:error];
+	if (!res)
+	{
+		return NO;
+	}
+	
+	return [self _initializeGame:error];
+}
+
+- (BOOL)loadDriver:(NSString *)driver withAuditResult:(AuditResult **)result error:(NSError **)error
 {
 	_driverName = driver;
 	
-	driver_enumerator enumerator(*_options, _driverName.UTF8String);
-	
-	if (enumerator.count() == 0)
+	AuditResult *ar = [AuditResult auditResultWithOptions:_options driverName:driver];
+	if (ar == nil)
 	{
-		NSDictionary<NSErrorUserInfoKey, id> *info = @{
-				NSLocalizedDescriptionKey: NSLocalizedString(@"Invalid driver", "Driver not supported"),
-		};
-		*error = [NSError errorWithDomain:MAMEErrorDomain code:MAMEErrorInvalidDriver userInfo:info];
+		// nil indicates the driver was not found
+		if (error)
+		{
+			NSDictionary<NSErrorUserInfoKey, id> *info = @{
+					NSLocalizedDescriptionKey: NSLocalizedString(@"Invalid driver", "Driver not supported"),
+			};
+			*error = [NSError errorWithDomain:MAMEErrorDomain code:MAMEErrorInvalidDriver userInfo:info];
+		}
 		return NO;
 	}
 	
-	enumerator.next();
-	_gameDriver = &enumerator.driver();
-	
-	media_auditor auditor(enumerator);
-	media_auditor::summary summary = auditor.audit_media(AUDIT_VALIDATE_FAST);
-	if (summary == media_auditor::INCORRECT || summary == media_auditor::NOTFOUND)
+	if (result)
 	{
-		std::ostringstream output;
-		auditor.summarize(enumerator.driver().name, &output);
+		*result = ar;
+	}
+	
+	if (ar.summary == AuditSummaryIncorrect || ar.summary == AuditSummaryNotFound)
+	{
 		if (error != nil)
 		{
-			NSString *auditOutput = @(output.str().c_str());
 			NSDictionary<NSErrorUserInfoKey, id> *info = @{
 					NSLocalizedDescriptionKey: NSLocalizedString(@"Audit failed", "audit failed"),
-					NSLocalizedFailureReasonErrorKey: auditOutput,
+					NSLocalizedFailureReasonErrorKey: ar.description,
 			};
 			*error = [NSError errorWithDomain:MAMEErrorDomain code:MAMEErrorAuditFailed userInfo:info];
 		}
-		
-		osd_printf_error("audit failed: %s", output.str().c_str());
+		osd_printf_error("audit failed: %s", ar.description.UTF8String);
 		
 		return NO;
 	}
+	
+	_gameDriver = ar.gameDriver;
 	
 	if (_gameDriver->flags & (MACHINE_CLICKABLE_ARTWORK | MACHINE_REQUIRES_ARTWORK))
 	{
@@ -432,7 +392,7 @@ OPTION_PROPERTY(CFG_DIRECTORY, CFG, CFG)
 	
 	try
 	{
-		_options->set_system_name(driver.UTF8String);
+		_options.options->set_system_name(driver.UTF8String);
 	}
 	catch (options_error_exception &ex)
 	{
@@ -448,7 +408,7 @@ OPTION_PROPERTY(CFG_DIRECTORY, CFG, CFG)
 	_softwareName = name;
 	try
 	{
-		_options->set_software(_softwareName.UTF8String);
+		_options.options->set_software(_softwareName.UTF8String);
 		
 	}
 	catch (options_error_exception &ex)
@@ -493,6 +453,16 @@ OPTION_PROPERTY(CFG_DIRECTORY, CFG, CFG)
 
 
 #pragma mark - serialization
+
+- (NSUInteger)stateSize
+{
+	if (!_supportsSave)
+	{
+		return 0;
+	}
+	
+	return static_cast<NSUInteger >(_machine->save().state_size());
+}
 
 - (NSData *)serializeState
 {
@@ -556,7 +526,7 @@ OPTION_PROPERTY(CFG_DIRECTORY, CFG, CFG)
 	_manager->clear_new_driver_pending();
 	
 	// if no driver, use the internal empty driver
-	_gameDriver = _options->system();
+	_gameDriver = _options.options->system();
 	if (_gameDriver == nullptr)
 	{
 		_gameDriver = &GAME_NAME(___empty);
@@ -566,12 +536,12 @@ OPTION_PROPERTY(CFG_DIRECTORY, CFG, CFG)
 	_isEmpty = (_gameDriver == &GAME_NAME(___empty));
 	if (!_isEmpty)
 	{
-		validity_checker valid(*_options);
+		validity_checker valid(*_options.options);
 		valid.set_verbose(false);
 		valid.check_shared_source(*_gameDriver);
 	}
 	
-	_config = global_alloc(machine_config(*_gameDriver, *_options));
+	_config = global_alloc(machine_config(*_gameDriver, *_options.options));
 	_machine = global_alloc(running_machine(*_config, *_manager));
 	_manager->set_machine(_machine);
 	
@@ -747,6 +717,7 @@ headless_osd_interface::~headless_osd_interface()
 void headless_osd_interface::init(running_machine &machine)
 {
 	screen_device_iterator iter(machine.root_device());
+	
 	auto first_screen = iter.first();
 	if (!first_screen)
 	{
@@ -754,9 +725,30 @@ void headless_osd_interface::init(running_machine &machine)
 		return;
 	}
 	
+	if (true)
+	{
+		auto i = 0;
+		for (auto &screen: iter)
+		{
+			auto aspect = screen.physical_aspect();
+			bool rotated = (screen.orientation() & ORIENTATION_SWAP_XY) == ORIENTATION_SWAP_XY;
+			
+			os_log_debug(OE_LOG, "screen %d, dimensions %d x %d, visible area: %d x %d, physical aspect: %d:%d, "
+			                     "rotated: [%{public}s]",
+			             i,
+			             screen.width(), screen.height(),
+			             screen.visible_area().width(), screen.visible_area().height(),
+			             aspect.first, aspect.second,
+			             rotated ? "Y" : "N");
+			i++;
+		}
+	}
+	
 	m_state = osd_state::initialized;
 	m_machine = &machine;
 	m_target = m_machine->render().target_alloc();
+	
+	os_log_debug(OE_LOG, "target allocated: %d x %d", m_target->width(), m_target->height());
 	
 	m_fps = ATTOSECONDS_TO_HZ(first_screen->refresh_attoseconds());
 	auto aspect = first_screen->physical_aspect();
@@ -765,14 +757,29 @@ void headless_osd_interface::init(running_machine &machine)
 	{
 		std::swap(aspect.first, aspect.second);
 	}
-	auto pixel_aspect = (float) aspect.first / aspect.second;
-	pixel_aspect = 1.0;
 	
-	m_target->set_scale_mode(SCALE_INTEGER);
+	// get more info about target
+	{
+		render_layer_config temp = m_target->layer_config();
+		layout_view *view = m_target->current_view();
+		float view_aspect = view->effective_aspect(temp);
+		if (rotated) view_aspect = 1.0f / view_aspect;
+		os_log_debug(OE_LOG, "view aspect = %03f", view_aspect);
+	}
+	
 	s32 width, height;
 	m_target->compute_minimum_size(width, height);
+	
+	os_log_debug(OE_LOG, "target compute_minimum_size: %d x %d", width, height);
+	
 	m_target_size = osd_dim(width, height);
-	m_target->set_bounds(width, height, pixel_aspect);
+	m_target->set_bounds(width, height, 0.0);
+	
+	{
+		s32 propwidth = width, propheight = width;
+		m_target->compute_visible_area(propwidth, propheight, 1.0, m_target->orientation(), propwidth, propheight);
+		os_log_debug(OE_LOG, "target compute_visible_area: %d x %d", propwidth, propheight);
+	}
 	
 	// ensure we get called on the way out
 	machine.add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(&headless_osd_interface::exit, this));
@@ -862,7 +869,8 @@ bool headless_osd_interface::get_font_families(std::string const &font_path,
 
 #pragma mark - output
 
-void headless_osd_interface::output_callback(osd_output_channel channel, util::format_argument_pack<std::ostream> const &args)
+void headless_osd_interface::output_callback(osd_output_channel channel,
+                                             util::format_argument_pack<std::ostream> const &args)
 {
 	static OSDLogLevel levels[OSD_OUTPUT_CHANNEL_COUNT] = {
 			[OSD_OUTPUT_CHANNEL_ERROR] = OSDLogLevelError,
@@ -886,3 +894,281 @@ void headless_osd_interface::output_callback(osd_output_channel channel, util::f
 	
 	[m_delegate logLevel:levels[channel] message:msg];
 }
+
+#pragma mark - Auditing
+
+@implementation Device
+{
+	device_t *_device;
+}
+
+- (instancetype)initWithDevice:(device_t *)device
+{
+	if ((self = [super init]))
+	{
+		_device = device;
+	}
+	return self;
+}
+
+- (NSString *)name
+{
+	return NSSTRING_NO_COPY(_device->name());
+}
+
+- (NSString *)shortName
+{
+	return NSSTRING_NO_COPY(_device->shortname());
+}
+
+@end
+
+@implementation AuditRecord
+{
+	Device *device;
+}
+
+- (instancetype)initFromRecord:(media_auditor::audit_record const *)record
+{
+	if ((self = [super init]))
+	{
+		_name = @(record->name());
+		_expectedLength = record->expected_length();
+		_status = (AuditStatus) record->status();
+		_substatus = (AuditSubstatus) record->substatus();
+		_expectedHashes = @(record->expected_hashes().macro_string().c_str());
+		_actualHashes = @(record->actual_hashes().macro_string().c_str());
+		_actualLength = record->actual_length();
+		device_t *pDevice = record->shared_device();
+		if (pDevice)
+		{
+			_sharedDevice = [[Device alloc] initWithDevice:pDevice];
+		}
+	}
+	
+	return self;
+}
+
+- (NSString *)description
+{
+	return _name;
+}
+
+@end
+
+@implementation AuditResult
+{
+	NSString *_description;
+}
+
++ (instancetype)auditResultWithOptions:(Options *)options driverName:(NSString *)driverName
+{
+	driver_enumerator enumerator(*options.options, driverName.UTF8String);
+	
+	if (enumerator.count() == 0)
+	{
+		return nil;
+	}
+	
+	enumerator.next();
+	
+	AuditResult *ar = [AuditResult new];
+	ar->_gameDriver = &enumerator.driver();
+	
+	media_auditor auditor(enumerator);
+	ar->_summary = (AuditSummary) auditor.audit_media(AUDIT_VALIDATE_FAST);
+	
+	NSMutableArray<AuditRecord *> *records = [NSMutableArray arrayWithCapacity:auditor.records().size()];
+	
+	for (media_auditor::audit_record const &record : auditor.records())
+	{
+		[records addObject:[[AuditRecord alloc] initFromRecord:&record]];
+	}
+	ar->_records = records;
+	std::ostringstream output;
+	auditor.summarize(enumerator.driver().name, &output);
+	ar->_description = @(output.str().c_str());
+	
+	return ar;
+}
+
+- (NSString *)description
+{
+	return _description;
+}
+
+@end
+
+@implementation Options
+{
+	osd_options *_options;
+}
+
+- (instancetype)init
+{
+	if ((self = [super init]))
+	{
+		_options = global_alloc(osd_options);
+		_options->set_value(OPTION_PLUGINS, 0, OPTION_PRIORITY_HIGH); // disable LUA plugins
+		_options->set_value(OPTION_READCONFIG, 0, OPTION_PRIORITY_HIGH); // disable reading .ini files
+		_options->set_value(OPTION_SAMPLERATE, 48000, OPTION_PRIORITY_HIGH);
+		_options->set_value(OSDOPTION_VIDEO, OSDOPTVAL_NONE, OPTION_PRIORITY_MAXIMUM);
+		// disable throttling as OpenEmu handles frame pacing
+		_options->set_value(OPTION_THROTTLE, 0, OPTION_PRIORITY_HIGH);
+		_options->set_value(OPTION_CHEAT, 1, OPTION_PRIORITY_HIGH);
+		_options->set_value(OPTION_SKIP_GAMEINFO, 1, OPTION_PRIORITY_HIGH);
+		_options->set_value(OPTION_SKIP_WARNINGS, 1, OPTION_PRIORITY_HIGH);
+		_options->set_value(OPTION_HEADLESS, 1, OPTION_PRIORITY_HIGH);
+		_options->set_value(OPTION_READCFG, 0, OPTION_PRIORITY_HIGH);
+		_options->set_value(OPTION_WRITECFG, 0, OPTION_PRIORITY_HIGH);
+		_options->set_value(OPTION_BIOS, "default", OPTION_PRIORITY_HIGH);
+	}
+	return self;
+}
+
+- (void)dealloc
+{
+	global_free(_options);
+}
+
+- (osd_options *)options
+{
+	return _options;
+}
+
+#pragma mark - core search path options
+
+#define PATH_PROPERTY(OPT, SET, GET) \
+- (void)set##SET##Path:(NSString *)path \
+{ \
+    _options->set_value(OPTION_ ## OPT, path.UTF8String, OPTION_PRIORITY_HIGH); \
+} \
+\
+- (NSString *)GET##Path \
+{ \
+    return @(_options->value(OPTION_ ## OPT)); \
+}
+
+
+PATH_PROPERTY(MEDIAPATH, Roms, roms)
+
+PATH_PROPERTY(HASHPATH, Hash, hash)
+
+PATH_PROPERTY(SAMPLEPATH, Samples, samples)
+
+PATH_PROPERTY(ARTPATH, Art, art)
+
+PATH_PROPERTY(CTRLRPATH, Controller, controller)
+
+PATH_PROPERTY(CHEATPATH, Cheat, cheat)
+
+PATH_PROPERTY(CROSSHAIRPATH, CrossHair, crossHair)
+
+PATH_PROPERTY(PLUGINSPATH, Plugins, plugins)
+
+PATH_PROPERTY(LANGUAGEPATH, Language, language)
+
+PATH_PROPERTY(NVRAM_DIRECTORY, NVRAM, NVRAM)
+
+PATH_PROPERTY(CFG_DIRECTORY, CFG, CFG)
+
+#undef PATH_PROPERTY
+
+- (void)setBasePath:(NSString *)path
+{
+	_options->set_value(OPTION_MEDIAPATH, [NSString pathWithComponents:@[path, @"roms"]].UTF8String,
+	                    OPTION_PRIORITY_HIGH);
+	_options->set_value(OPTION_HASHPATH, [NSString pathWithComponents:@[path, @"hash"]].UTF8String,
+	                    OPTION_PRIORITY_HIGH);
+	_options->set_value(OPTION_SAMPLEPATH, [NSString pathWithComponents:@[path, @"samples"]].UTF8String,
+	                    OPTION_PRIORITY_HIGH);
+	_options->set_value(OPTION_ARTPATH, [NSString pathWithComponents:@[path, @"artwork"]].UTF8String,
+	                    OPTION_PRIORITY_HIGH);
+	_options->set_value(OPTION_CTRLRPATH, [NSString pathWithComponents:@[path, @"ctrlr"]].UTF8String,
+	                    OPTION_PRIORITY_HIGH);
+	_options->set_value(OPTION_CHEATPATH, [NSString pathWithComponents:@[path, @"cheat"]].UTF8String,
+	                    OPTION_PRIORITY_HIGH);
+	_options->set_value(OPTION_CROSSHAIRPATH, [NSString pathWithComponents:@[path, @"crosshair"]].UTF8String,
+	                    OPTION_PRIORITY_HIGH);
+	_options->set_value(OPTION_PLUGINSPATH, [NSString pathWithComponents:@[path, @"plugins"]].UTF8String,
+	                    OPTION_PRIORITY_HIGH);
+	_options->set_value(OPTION_LANGUAGEPATH, [NSString pathWithComponents:@[path, @"language"]].UTF8String,
+	                    OPTION_PRIORITY_HIGH);
+	_options->set_value(OPTION_NVRAM_DIRECTORY, [NSString pathWithComponents:@[path, @"nvram"]].UTF8String,
+	                    OPTION_PRIORITY_HIGH);
+	_options->set_value(OPTION_CFG_DIRECTORY, [NSString pathWithComponents:@[path, @"cfg"]].UTF8String,
+	                    OPTION_PRIORITY_HIGH);
+}
+
+#define INT_PROPERTY(OPT, SET, GET) \
+- (void)set##SET:(NSInteger)value \
+{ \
+    _options->set_value(OPTION_ ## OPT, static_cast<int>(value), OPTION_PRIORITY_HIGH); \
+} \
+\
+- (NSInteger)GET \
+{ \
+    return static_cast<NSInteger>(_options->int_value(OPTION_ ## OPT)); \
+}
+
+#define BOOL_PROPERTY(OPT, SET, GET) \
+- (void)set##SET:(BOOL)value \
+{ \
+    _options->set_value(OPTION_ ## OPT, static_cast<int>(value), OPTION_PRIORITY_HIGH); \
+} \
+\
+- (BOOL)GET \
+{ \
+    return static_cast<BOOL>(_options->int_value(OPTION_ ## OPT) != 0); \
+}
+
+#define FLOAT_PROPERTY(OPT, SET, GET) \
+- (void)set##SET:(float)value \
+{ \
+    _options->set_value(OPTION_ ## OPT, value, OPTION_PRIORITY_HIGH); \
+} \
+\
+- (float)GET \
+{ \
+    return _options->int_value(OPTION_ ## OPT); \
+}
+
+#define STRING_PROPERTY(OPT, SET, GET) \
+- (void)set##SET:(NSString *)value \
+{ \
+    _options->set_value(OPTION_ ## OPT, value.UTF8String, OPTION_PRIORITY_HIGH); \
+} \
+\
+- (float)GET \
+{ \
+    return @(_options->value(OPTION_ ## OPT)); \
+}
+
+#pragma mark - core performance options
+
+BOOL_PROPERTY(AUTOFRAMESKIP, AutoFrameskip, autoFrameskip);
+BOOL_PROPERTY(FRAMESKIP, Frameskip, frameskip);
+FLOAT_PROPERTY(SPEED, Speed, speed);
+
+#pragma mark - core render options
+
+BOOL_PROPERTY(KEEPASPECT, KeepAspect, keepAspect);
+BOOL_PROPERTY(UNEVENSTRETCH, UnevenStretch, unevenStretch);
+BOOL_PROPERTY(UNEVENSTRETCHX, UnevenStretchX, unevenStretchX);
+BOOL_PROPERTY(UNEVENSTRETCHY, UnevenStretchY, unevenStretchY);
+BOOL_PROPERTY(AUTOSTRETCHXY, AutoStretchXY, autoStretchXY);
+BOOL_PROPERTY(INTOVERSCAN, IntOverscan, intOverscan);
+INT_PROPERTY(INTSCALEX, IntScaleX, intScaleX);
+INT_PROPERTY(INTSCALEY, IntScaleY, intScaleY);
+
+#pragma mark - core rotation options
+
+BOOL_PROPERTY(ROTATE, Rotate, Rotate);
+BOOL_PROPERTY(ROR, ROR, ROR);
+BOOL_PROPERTY(ROL, ROL, ROL);
+BOOL_PROPERTY(AUTOROR, AutoROR, AutoROR);
+BOOL_PROPERTY(AUTOROL, AutoROL, AutoROL);
+BOOL_PROPERTY(FLIPX, FlipX, flipX);
+BOOL_PROPERTY(FLIPY, FlipY, flipY);
+
+@end

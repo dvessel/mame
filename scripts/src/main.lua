@@ -210,7 +210,7 @@ end
 		files {
 			MAME_DIR .. "src/osd/osdnet.cpp",
 			MAME_DIR .. "src/osd/osdnet.h",
-			MAME_DIR .. "src/osd/headless/headlessmain.mm",
+			MAME_DIR .. "src/osd/headless/headless.mm",
 			MAME_DIR .. "src/osd/headless/driver.mm",
 		}
 
@@ -388,7 +388,7 @@ end
 		files {
 			MAME_DIR .. "src/osd/osdnet.cpp",
 			MAME_DIR .. "src/osd/osdnet.h",
-			MAME_DIR .. "src/osd/headless/headlessmain.mm",
+			MAME_DIR .. "src/osd/headless/headless.mm",
 			MAME_DIR .. "src/osd/headless/driver.mm",
 		}
 
