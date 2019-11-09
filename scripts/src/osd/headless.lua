@@ -62,7 +62,7 @@ project ("osd_" .. _OPTIONS["osd"])
 	}
 
 	files {
-		MAME_DIR .. "src/osd/headless/headlessmain.mm",
+		MAME_DIR .. "src/osd/headless/headless.mm",
 		MAME_DIR .. "src/osd/headless/driver.mm",
 		MAME_DIR .. "src/osd/osdepend.h",
 
