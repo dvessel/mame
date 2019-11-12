@@ -59,17 +59,27 @@ menu_main::menu_main(mame_ui_manager &mui, render_container &container) : menu(m
 
 void menu_main::populate(float &customtop, float &custombottom)
 {
-	/* add main menu items */
-
-	if (!machine().options().headless())
+	if (machine().options().headless())
 	{
-		item_append(_("Input (general)"), "", 0, (void *) INPUT_GROUPS);
+		if (ui().machine_info().has_dips())
+			item_append(_("Dip Switches"), "", 0, (void *)SETTINGS_DIP_SWITCHES);
+		if (ui().machine_info().has_configs())
+			item_append(_("Machine Configuration"), "", 0, (void *)SETTINGS_DRIVER_CONFIG);
 		
-		item_append(_("Input (this Machine)"), "", 0, (void *) INPUT_SPECIFIC);
+		item_append(_("Machine Information"), "", 0, (void *)GAME_INFO);
 		
-		if (ui().machine_info().has_analog())
-			item_append(_("Analog Controls"), "", 0, (void *) ANALOG);
+		item_append(menu_item_type::SEPARATOR);
+		
+		return;
 	}
+	
+	/* add main menu items */
+	item_append(_("Input (general)"), "", 0, (void *)INPUT_GROUPS);
+
+	item_append(_("Input (this Machine)"), "", 0, (void *)INPUT_SPECIFIC);
+
+	if (ui().machine_info().has_analog())
+		item_append(_("Analog Controls"), "", 0, (void *)ANALOG);
 	if (ui().machine_info().has_dips())
 		item_append(_("DIP Switches"), "", 0, (void *)SETTINGS_DIP_SWITCHES);
 	if (ui().machine_info().has_configs())
@@ -78,10 +88,7 @@ void menu_main::populate(float &customtop, float &custombottom)
 	item_append(_("Bookkeeping Info"), "", 0, (void *)BOOKKEEPING);
 
 	item_append(_("Machine Information"), "", 0, (void *)GAME_INFO);
-	
-	if (ui().found_machine_warnings())
-		item_append(_("Warning Information"), "", 0, (void *)WARN_INFO);
-	
+
 	if (!machine().options().headless())
 	{
 		for (device_image_interface &image : image_interface_iterator(machine().root_device()))
@@ -135,15 +142,12 @@ void menu_main::populate(float &customtop, float &custombottom)
 	if (mame_machine_manager::instance()->lua()->call_plugin_check<const char *>("data_list", "", true))
 		item_append(_("External DAT View"), "", 0, (void *)EXTERNAL_DATS);
 
-	if (!machine().options().headless())
-	{
-		item_append(menu_item_type::SEPARATOR);
-		
-		if (!mame_machine_manager::instance()->favorite().is_favorite(machine()))
-			item_append(_("Add To Favorites"), "", 0, (void *) ADD_FAVORITE);
-		else
-			item_append(_("Remove From Favorites"), "", 0, (void *) REMOVE_FAVORITE);
-	}
+	item_append(menu_item_type::SEPARATOR);
+
+	if (!mame_machine_manager::instance()->favorite().is_favorite(machine()))
+		item_append(_("Add To Favorites"), "", 0, (void *)ADD_FAVORITE);
+	else
+		item_append(_("Remove From Favorites"), "", 0, (void *)REMOVE_FAVORITE);
 
 	item_append(menu_item_type::SEPARATOR);
 
