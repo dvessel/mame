@@ -50,13 +50,17 @@ INT_PROPERTY(INTSCALEY, IntScaleY, intScaleY);
 
 #pragma mark - core rotation options
 
-BOOL_PROPERTY(ROTATE, Rotate, Rotate);
+BOOL_PROPERTY(ROTATE, Rotate, rotate);
 BOOL_PROPERTY(ROR, ROR, ROR);
 BOOL_PROPERTY(ROL, ROL, ROL);
-BOOL_PROPERTY(AUTOROR, AutoROR, AutoROR);
-BOOL_PROPERTY(AUTOROL, AutoROL, AutoROL);
+BOOL_PROPERTY(AUTOROR, AutoROR, autoROR);
+BOOL_PROPERTY(AUTOROL, AutoROL, autoROL);
 BOOL_PROPERTY(FLIPX, FlipX, flipX);
 BOOL_PROPERTY(FLIPY, FlipY, flipY);
+
+#pragma mark - core artwork options
+
+BOOL_PROPERTY(ARTWORK_CROP, ArtworkCrop, artworkCrop);
 
 #undef PATH_PROPERTY
 #undef BOOL_PROPERTY
