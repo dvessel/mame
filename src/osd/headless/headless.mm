@@ -27,7 +27,7 @@
 // Renderer headers
 #include "rendersw.hxx"
 
-#define NSSTRING_NO_COPY(x) [[NSString alloc] initWithBytesNoCopy:(void *)(x) length:strlen(x) encoding:NSUTF8StringEncoding freeWhenDone:NO];
+#define NSSTRING_NO_COPY(x) [[NSString alloc] initWithBytesNoCopy:(void *)(x) length:strlen(x) encoding:NSUTF8StringEncoding freeWhenDone:NO]
 
 // static assertions
 
@@ -156,6 +156,8 @@ public:
 
 protected:
 	
+	void update_dimensions();
+	
 	// internal state
 	running_machine *m_machine;
 	osd_options &m_options;
@@ -204,19 +206,17 @@ static_assert(InputItemID::InputItemID_ABSOLUTE_MAXIMUM == input_item_id::ITEM_I
 	running_machine *_machine;
 	game_driver const *_gameDriver;
 	BOOL _supportsSave;
-	NSString *_basePath;
 	
 	InputClass *_joystick;
 	InputClass *_mouse;
 	InputClass *_keyboard;
-	
 	
 	bool _isEmpty;
 }
 
 + (void)initialize
 {
-	OE_LOG = os_log_create("org.mamedev.mame", "");
+	OE_LOG = os_log_create("org.mamedev.mame", "osd");
 }
 
 - (instancetype)init
@@ -353,6 +353,8 @@ static_assert(InputItemID::InputItemID_ABSOLUTE_MAXIMUM == input_item_id::ITEM_I
 		*result = ar;
 	}
 	
+	_gameDriver = ar.gameDriver;
+	
 	if (ar.summary == AuditSummaryIncorrect || ar.summary == AuditSummaryNotFound)
 	{
 		if (error != nil)
@@ -367,8 +369,6 @@ static_assert(InputItemID::InputItemID_ABSOLUTE_MAXIMUM == input_item_id::ITEM_I
 		
 		return NO;
 	}
-	
-	_gameDriver = ar.gameDriver;
 	
 	if (_gameDriver->flags & (MACHINE_CLICKABLE_ARTWORK | MACHINE_REQUIRES_ARTWORK))
 	{
@@ -716,96 +716,140 @@ headless_osd_interface::~headless_osd_interface()
 
 void headless_osd_interface::init(running_machine &machine)
 {
-	screen_device_iterator iter(machine.root_device());
+	m_state = osd_state::initialized;
+	m_machine = &machine;
+	m_target = m_machine->render().target_alloc();
+	m_target->set_scale_mode(SCALE_INTEGER);
+	m_target->set_keepaspect(true);
+	// set starting view
+	auto viewindex = m_target->configured_view("auto", 0, 1);
+	m_target->set_view(viewindex);
+	os_log_debug(OE_LOG, "target allocated: %d x %d", m_target->width(), m_target->height());
 	
-	auto first_screen = iter.first();
-	if (!first_screen)
+	// ensure we get called on the way out
+	machine.add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(&headless_osd_interface::exit, this));
+	
+	[m_delegate didInitialize];
+}
+
+void headless_osd_interface::update_dimensions()
+{
+	// check if the games video mode has changed
+	s32 temp_width, temp_height;
+	m_target->compute_minimum_size(temp_width, temp_height);
+	osd_dim new_size(temp_width, temp_height);
+	if (new_size == m_target_size)
 	{
-		m_state = osd_state::error;
+		// nothing has changed
 		return;
 	}
 	
-	if (true)
+	screen_device_iterator iter(m_machine->root_device());
+	auto first_screen = iter.first();
+	if (!first_screen)
+	{
+		return;
+	}
+
+#if 0
 	{
 		auto i = 0;
 		for (auto &screen: iter)
 		{
 			auto aspect = screen.physical_aspect();
-			bool rotated = (screen.orientation() & ORIENTATION_SWAP_XY) == ORIENTATION_SWAP_XY;
+			auto native = std::pair<unsigned, unsigned>(screen.visible_area().width(), screen.visible_area().height());
+			util::reduce_fraction(native.first, native.second);
 			
-			os_log_debug(OE_LOG, "screen %d, dimensions %d x %d, visible area: %d x %d, physical aspect: %d:%d, "
+			bool rotated = (screen.orientation() & ORIENTATION_SWAP_XY) == ORIENTATION_SWAP_XY;
+			if (rotated)
+			{
+				std::swap(aspect.first, aspect.second);
+				std::swap(native.first, native.second);
+			}
+			
+			os_log_debug(OE_LOG, "screen %d, dimensions %d x %d, "
+			                     "visible area: %d x %d, "
+			                     "physical aspect: %d:%d, "
+			                     "native aspect: %d:%d, "
 			                     "rotated: [%{public}s]",
 			             i,
 			             screen.width(), screen.height(),
 			             screen.visible_area().width(), screen.visible_area().height(),
 			             aspect.first, aspect.second,
+			             native.first, native.second,
 			             rotated ? "Y" : "N");
 			i++;
 		}
 	}
+#endif
 	
-	m_state = osd_state::initialized;
-	m_machine = &machine;
-	m_target = m_machine->render().target_alloc();
+	double new_fps = ATTOSECONDS_TO_HZ(first_screen->refresh_attoseconds());
 	
-	os_log_debug(OE_LOG, "target allocated: %d x %d", m_target->width(), m_target->height());
+	// for multiple screens, use the full dimensions
+	std::pair<unsigned, unsigned> aspect;
 	
-	m_fps = ATTOSECONDS_TO_HZ(first_screen->refresh_attoseconds());
-	auto aspect = first_screen->physical_aspect();
-	bool rotated = (first_screen->orientation() & ORIENTATION_SWAP_XY) == ORIENTATION_SWAP_XY;
-	if (rotated)
+	if (iter.count() == 1)
 	{
-		std::swap(aspect.first, aspect.second);
+		aspect = first_screen->physical_aspect();
+		bool rotated = (static_cast<unsigned>(first_screen->orientation()) & static_cast<unsigned>(ORIENTATION_SWAP_XY)) == ORIENTATION_SWAP_XY;
+		if (rotated)
+		{
+			std::swap(aspect.first, aspect.second);
+		}
+	}
+	else
+	{
+		// for multiple screens, use the full dimensions
+		aspect = std::pair<unsigned, unsigned>(new_size.width(), new_size.height());
 	}
 	
-	// get more info about target
-	{
-		render_layer_config temp = m_target->layer_config();
-		layout_view *view = m_target->current_view();
-		float view_aspect = view->effective_aspect(temp);
-		if (rotated) view_aspect = 1.0f / view_aspect;
-		os_log_debug(OE_LOG, "view aspect = %03f", view_aspect);
-	}
+	os_log_debug(OE_LOG, "target size change, old_size=%dx%d, new_size=%dx%d, old_fps=%0.3f, new_fps=%0.3f",
+	             m_target_size.width(), m_target_size.height(),
+	             new_size.width(), new_size.height(),
+	             m_fps, new_fps);
 	
-	s32 width, height;
-	m_target->compute_minimum_size(width, height);
+	// update state
+	m_fps = new_fps;
+	m_target_size = new_size;
+	m_target->set_bounds(m_target_size.width(), m_target_size.height(), 0.0);
 	
-	os_log_debug(OE_LOG, "target compute_minimum_size: %d x %d", width, height);
-	
-	m_target_size = osd_dim(width, height);
-	m_target->set_bounds(width, height, 0.0);
-	
-	{
-		s32 propwidth = width, propheight = width;
-		m_target->compute_visible_area(propwidth, propheight, 1.0, m_target->orientation(), propwidth, propheight);
-		os_log_debug(OE_LOG, "target compute_visible_area: %d x %d", propwidth, propheight);
-	}
-	
-	// ensure we get called on the way out
-	machine.add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(&headless_osd_interface::exit, this));
-	
-	[m_delegate willInitializeWithBounds:NSMakeSize(width, height) fps:static_cast<float>(m_fps) aspect:NSMakeSize(
+	[m_delegate didChangeDisplayBounds:NSMakeSize(new_size.width(), new_size.height()) fps:new_fps aspect:NSMakeSize(
 			aspect.first, aspect.second)];
-}
-
-void headless_osd_interface::exit()
-{
-	m_state = osd_state::uninitialized;
-	m_machine->render().target_free(m_target);
 }
 
 void headless_osd_interface::update(bool skip_redraw)
 {
+	// check if the games video mode has changed
+	update_dimensions();
+	
 	if (!skip_redraw && m_buffer != nullptr)
 	{
 		auto &prim = m_target->get_primitives();
-		u32 width = static_cast<u32>(m_buffer_size.width());
-		u32 height = static_cast<u32>(m_buffer_size.height());
+		
+		u32 width = static_cast<u32>(m_target_size.width());
+		u32 height = static_cast<u32>(m_target_size.height());
+		u32 pitch = static_cast<u32>(m_buffer_size.width());
+		
+		if (width > pitch || height > m_buffer_size.height())
+		{
+			os_log_error(OE_LOG, "target size %dx%d exceeds buffer size %dx%d",
+			             m_target_size.width(), m_target_size.height(),
+			             m_buffer_size.width(), m_buffer_size.height());
+			return;
+		}
 		
 		prim.acquire_lock();
-		software_renderer<uint32_t, 0, 0, 0, 16, 8, 0>::draw_primitives(prim, m_buffer, width, height, width);
+		software_renderer<uint32_t, 0, 0, 0, 16, 8, 0>::draw_primitives(prim, m_buffer, width, height, pitch);
 		prim.release_lock();
 	}
+}
+
+void headless_osd_interface::exit()
+{
+	m_fps = 0.0;
+	m_target_size = osd_dim(0, 0);
+	m_state = osd_state::uninitialized;
+	m_machine->render().target_free(m_target);
 }
 
 #pragma mark - audio overridables
@@ -898,34 +942,21 @@ void headless_osd_interface::output_callback(osd_output_channel channel,
 #pragma mark - Auditing
 
 @implementation Device
-{
-	device_t *_device;
-}
 
 - (instancetype)initWithDevice:(device_t *)device
 {
 	if ((self = [super init]))
 	{
-		_device = device;
+		_name = @(device->name());
+		_shortName = @(device->shortname());
 	}
 	return self;
-}
-
-- (NSString *)name
-{
-	return NSSTRING_NO_COPY(_device->name());
-}
-
-- (NSString *)shortName
-{
-	return NSSTRING_NO_COPY(_device->shortname());
 }
 
 @end
 
 @implementation AuditRecord
 {
-	Device *device;
 }
 
 - (instancetype)initFromRecord:(media_auditor::audit_record const *)record
@@ -1019,8 +1050,8 @@ void headless_osd_interface::output_callback(osd_output_channel channel,
 		_options->set_value(OPTION_SKIP_GAMEINFO, 1, OPTION_PRIORITY_HIGH);
 		_options->set_value(OPTION_SKIP_WARNINGS, 1, OPTION_PRIORITY_HIGH);
 		_options->set_value(OPTION_HEADLESS, 1, OPTION_PRIORITY_HIGH);
-		_options->set_value(OPTION_READCFG, 0, OPTION_PRIORITY_HIGH);
-		_options->set_value(OPTION_WRITECFG, 0, OPTION_PRIORITY_HIGH);
+		_options->set_value(OPTION_READCFG, 1, OPTION_PRIORITY_HIGH);
+		_options->set_value(OPTION_WRITECFG, 1, OPTION_PRIORITY_HIGH);
 		_options->set_value(OPTION_BIOS, "default", OPTION_PRIORITY_HIGH);
 	}
 	return self;
@@ -1147,28 +1178,47 @@ PATH_PROPERTY(CFG_DIRECTORY, CFG, CFG)
 #pragma mark - core performance options
 
 BOOL_PROPERTY(AUTOFRAMESKIP, AutoFrameskip, autoFrameskip);
+
 BOOL_PROPERTY(FRAMESKIP, Frameskip, frameskip);
+
 FLOAT_PROPERTY(SPEED, Speed, speed);
 
 #pragma mark - core render options
 
 BOOL_PROPERTY(KEEPASPECT, KeepAspect, keepAspect);
+
 BOOL_PROPERTY(UNEVENSTRETCH, UnevenStretch, unevenStretch);
+
 BOOL_PROPERTY(UNEVENSTRETCHX, UnevenStretchX, unevenStretchX);
+
 BOOL_PROPERTY(UNEVENSTRETCHY, UnevenStretchY, unevenStretchY);
+
 BOOL_PROPERTY(AUTOSTRETCHXY, AutoStretchXY, autoStretchXY);
+
 BOOL_PROPERTY(INTOVERSCAN, IntOverscan, intOverscan);
+
 INT_PROPERTY(INTSCALEX, IntScaleX, intScaleX);
+
 INT_PROPERTY(INTSCALEY, IntScaleY, intScaleY);
 
 #pragma mark - core rotation options
 
-BOOL_PROPERTY(ROTATE, Rotate, Rotate);
+BOOL_PROPERTY(ROTATE, Rotate, rotate);
+
 BOOL_PROPERTY(ROR, ROR, ROR);
+
 BOOL_PROPERTY(ROL, ROL, ROL);
-BOOL_PROPERTY(AUTOROR, AutoROR, AutoROR);
-BOOL_PROPERTY(AUTOROL, AutoROL, AutoROL);
+
+BOOL_PROPERTY(AUTOROR, AutoROR, autoROR);
+
+BOOL_PROPERTY(AUTOROL, AutoROL, autoROL);
+
 BOOL_PROPERTY(FLIPX, FlipX, flipX);
+
 BOOL_PROPERTY(FLIPY, FlipY, flipY);
+
+#pragma mark - core artwork options
+
+BOOL_PROPERTY(ARTWORK_CROP, ArtworkCrop, artworkCrop);
 
 @end

@@ -22,10 +22,15 @@
 	return self;
 }
 
-- (void)willInitializeWithBounds:(NSSize)bounds fps:(float)fps aspect:(NSSize)aspect
+- (void)didInitialize
 {
 	printf("initializing\n");
 	InputDevice *joy = [_osd.joystick addDeviceNamed:@"Joy 1"];
+}
+
+- (void)didChangeDisplayBounds:(NSSize)bounds fps:(double)fps aspect:(NSSize)aspect
+{
+	printf("display bounds update\n");
 }
 
 - (void)updateAudioBuffer:(int16_t const *)buffer samples:(NSInteger)samples
