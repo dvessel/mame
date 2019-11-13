@@ -155,10 +155,18 @@ typedef NS_ENUM(NSInteger, AuditSubstatus)
 	AuditSubstatusUnverified = 100,
 };
 
+typedef NS_ENUM(NSInteger, AuditMediaType)
+{
+	AuditMediaTypeROM = 0,
+	AuditMediaTypeDisk,
+	AuditMediaTypeSample,
+};
+
 OE_EXPORTED_CLASS
 @interface AuditRecord : NSObject
 
 @property (nonatomic, readonly) NSString *name;
+@property (nonatomic, readonly) AuditMediaType mediaType;
 @property (nonatomic, readonly) NSUInteger expectedLength;
 @property (nonatomic, readonly) AuditStatus status;
 @property (nonatomic, readonly) AuditSubstatus substatus;
