@@ -29,13 +29,6 @@
 
 #define NSSTRING_NO_COPY(x) [[NSString alloc] initWithBytesNoCopy:(void *)(x) length:strlen(x) encoding:NSUTF8StringEncoding freeWhenDone:NO]
 
-// static assertions
-
-#define OE_STATIC_ASSERT(_condition, ...) static_assert(_condition, "" __VA_ARGS__)
-
-#define OE_ENUM_CHECK(_enum, _src, _c99enumcount) \
-    OE_STATIC_ASSERT(_enum::_src == _enum(_c99enumcount) )
-
 // sanity checks
 
 OE_ENUM_CHECK(media_auditor::summary, NOTFOUND, AuditSummaryNotFound);
@@ -45,6 +38,9 @@ OE_ENUM_CHECK(media_auditor::audit_status, UNVERIFIED, AuditStatusUnverified);
 
 OE_ENUM_CHECK(media_auditor::audit_substatus, GOOD, AuditSubstatusGood);
 OE_ENUM_CHECK(media_auditor::audit_substatus, UNVERIFIED, AuditSubstatusUnverified);
+
+OE_ENUM_CHECK(media_auditor::media_type, ROM, AuditMediaTypeROM);
+OE_ENUM_CHECK(media_auditor::media_type, SAMPLE, AuditMediaTypeSample);
 
 static os_log_t OE_LOG;
 
@@ -956,14 +952,13 @@ void headless_osd_interface::output_callback(osd_output_channel channel,
 @end
 
 @implementation AuditRecord
-{
-}
 
 - (instancetype)initFromRecord:(media_auditor::audit_record const *)record
 {
 	if ((self = [super init]))
 	{
 		_name = @(record->name());
+		_mediaType = static_cast<AuditMediaType>(record->type());
 		_expectedLength = record->expected_length();
 		_status = (AuditStatus) record->status();
 		_substatus = (AuditSubstatus) record->substatus();
