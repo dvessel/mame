@@ -15,6 +15,8 @@
 #include "ui/menu.h"
 #include "ui/inputmap.h"
 
+#include "emuopts.h"
+
 #include <algorithm>
 
 
@@ -622,6 +624,11 @@ void menu_settings::populate(float &customtop, float &custombottom)
 		custombottom = dipcount ? dipcount * (DIP_SWITCH_HEIGHT + DIP_SWITCH_SPACING) + DIP_SWITCH_SPACING : 0;
 
 	item_append(menu_item_type::SEPARATOR);
+
+	if (machine().options().headless()) {
+		return;
+	}
+
 	item_append(_("Reset"), "", 0, (void *)1);
 }
 
