@@ -639,6 +639,11 @@ configuration { "Release" }
 		"NDEBUG",
 	}
 
+configuration { "headless-rel" }
+	defines {
+		"NDEBUG",
+	}
+
 configuration { }
 
 -- CR/LF setup: use on win32, CR only on everything else
