@@ -92,6 +92,8 @@ int main(int argc, char *argv[])
 		
 		}
 		
+		GameDriver *driver = shared.driver;
+		
 		printf("state size: %lu\n", shared.stateSize);
 		printf("audit result:\n%s\n", ar.description.UTF8String);
 		
