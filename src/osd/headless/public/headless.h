@@ -2,7 +2,7 @@
 #import "inputenum.h"
 #import "oecommon.h"
 
-@class Options;
+@class Options, GameDriver;
 
 // callback for getting the value of an item on a device
 typedef uint32_t (*ItemGetStateFunc)(void *device_internal, void *item_internal);
@@ -75,6 +75,9 @@ OE_EXPORTED_CLASS
 @property (nonatomic, readonly) InputClass *mouse;
 @property (nonatomic, readonly) InputClass *keyboard;
 @property (nonatomic, readonly) BOOL supportsSave;
+
+/*! Returns the current driver after calling loadGame: */
+@property (nonatomic, readonly) GameDriver *driver;
 
 /*! name of current driver after calling loadGame:
  * */

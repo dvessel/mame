@@ -26,8 +26,7 @@
 
 // Renderer headers
 #include "rendersw.hxx"
-
-#define NSSTRING_NO_COPY(x) [[NSString alloc] initWithBytesNoCopy:(void *)(x) length:strlen(x) encoding:NSUTF8StringEncoding freeWhenDone:NO]
+#import "driver+private.h"
 
 // sanity checks
 
@@ -201,6 +200,7 @@ static_assert(InputItemID::InputItemID_ABSOLUTE_MAXIMUM == input_item_id::ITEM_I
 	machine_config *_config;
 	running_machine *_machine;
 	game_driver const *_gameDriver;
+	GameDriver *_driver;
 	BOOL _supportsSave;
 	
 	InputClass *_joystick;
@@ -350,6 +350,7 @@ static_assert(InputItemID::InputItemID_ABSOLUTE_MAXIMUM == input_item_id::ITEM_I
 	}
 	
 	_gameDriver = ar.gameDriver;
+	_driver = [[GameDriver alloc] initWithGameDriver:_gameDriver];
 	
 	if (ar.summary == AuditSummaryIncorrect || ar.summary == AuditSummaryNotFound)
 	{
