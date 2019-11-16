@@ -12,3 +12,7 @@
 #define OE_ENUM_CHECK(_enum, _src, _c99enumcount) \
     OE_STATIC_ASSERT(_enum::_src == _enum(_c99enumcount) )
 #endif
+
+#ifndef NSSTRING_NO_COPY
+#define NSSTRING_NO_COPY(x) [[NSString alloc] initWithBytesNoCopy:(void *)(x) length:strlen(x) encoding:NSUTF8StringEncoding freeWhenDone:NO]
+#endif
