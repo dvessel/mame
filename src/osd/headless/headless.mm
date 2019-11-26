@@ -200,7 +200,6 @@ static_assert(InputItemID::InputItemID_ABSOLUTE_MAXIMUM == input_item_id::ITEM_I
 	machine_config *_config;
 	running_machine *_machine;
 	game_driver const *_gameDriver;
-	GameDriver *_driver;
 	BOOL _supportsSave;
 	
 	InputClass *_joystick;
@@ -295,41 +294,13 @@ static_assert(InputItemID::InputItemID_ABSOLUTE_MAXIMUM == input_item_id::ITEM_I
 	_osd->set_buffer(buffer, dim);
 }
 
-- (NSString *)driverFullName
+- (BOOL)initializeWithError:(NSError **)error
 {
-	if (_gameDriver == nil)
-	{
-		return @"";
-	}
-	
-	return NSSTRING_NO_COPY(_gameDriver->type.fullname());
-}
-
-- (NSString *)driverShortName
-{
-	if (_gameDriver == nil)
-	{
-		return @"";
-	}
-	
-	return NSSTRING_NO_COPY(_gameDriver->type.shortname());
-}
-
-- (BOOL)loadGame:(NSString *)name withAuditResult:(AuditResult **)result error:(NSError **)error
-{
-	BOOL res = [self loadDriver:name withAuditResult:result error:error];
-	if (!res)
-	{
-		return NO;
-	}
-	
 	return [self _initializeGame:error];
 }
 
-- (BOOL)loadDriver:(NSString *)driver withAuditResult:(AuditResult **)result error:(NSError **)error
+- (BOOL)setDriver:(NSString *)driver withAuditResult:(AuditResult **)result error:(NSError **)error
 {
-	_driverName = driver;
-	
 	AuditResult *ar = [AuditResult auditResultWithOptions:_options driverName:driver];
 	if (ar == nil)
 	{
@@ -352,41 +323,6 @@ static_assert(InputItemID::InputItemID_ABSOLUTE_MAXIMUM == input_item_id::ITEM_I
 	_gameDriver = ar.gameDriver;
 	_driver = [[GameDriver alloc] initWithGameDriver:_gameDriver];
 	
-	if (ar.summary == AuditSummaryIncorrect || ar.summary == AuditSummaryNotFound)
-	{
-		if (error != nil)
-		{
-			NSDictionary<NSErrorUserInfoKey, id> *info = @{
-					NSLocalizedDescriptionKey: NSLocalizedString(@"Audit failed", "audit failed"),
-					NSLocalizedFailureReasonErrorKey: ar.description,
-			};
-			*error = [NSError errorWithDomain:MAMEErrorDomain code:MAMEErrorAuditFailed userInfo:info];
-		}
-		osd_printf_error("audit failed: %s", ar.description.UTF8String);
-		
-		return NO;
-	}
-	
-	if (_gameDriver->flags & (MACHINE_CLICKABLE_ARTWORK | MACHINE_REQUIRES_ARTWORK))
-	{
-		NSDictionary<NSErrorUserInfoKey, id> *info = @{
-				NSLocalizedDescriptionKey: NSLocalizedString(
-						@"Systems which require artwork to operate are not supported", "System not supported"),
-		};
-		*error = [NSError errorWithDomain:MAMEErrorDomain code:MAMEErrorUnsupportedROM userInfo:info];
-		return NO;
-	}
-	
-	if (_gameDriver->flags & MACHINE_MECHANICAL)
-	{
-		NSDictionary<NSErrorUserInfoKey, id> *info = @{
-				NSLocalizedDescriptionKey: NSLocalizedString(@"Mechanical systems are not supported",
-				                                             "System not supported"),
-		};
-		*error = [NSError errorWithDomain:MAMEErrorDomain code:MAMEErrorUnsupportedROM userInfo:info];
-		return NO;
-	}
-	
 	try
 	{
 		_options.options->set_system_name(driver.UTF8String);
@@ -399,24 +335,6 @@ static_assert(InputItemID::InputItemID_ABSOLUTE_MAXIMUM == input_item_id::ITEM_I
 	
 	return YES;
 }
-
-- (BOOL)loadSoftware:(NSString *)name error:(NSError **)error
-{
-	_softwareName = name;
-	try
-	{
-		_options.options->set_software(_softwareName.UTF8String);
-		
-	}
-	catch (options_error_exception &ex)
-	{
-		// NOTE(sgc): this should never happen, given we've validated the system
-		return NO;
-	}
-	
-	return [self _initializeGame:error];
-}
-
 
 - (void)unload
 {
@@ -721,7 +639,9 @@ void headless_osd_interface::init(running_machine &machine)
 	// set starting view
 	auto viewindex = m_target->configured_view("auto", 0, 1);
 	m_target->set_view(viewindex);
-	os_log_debug(OE_LOG, "target allocated: %d x %d", m_target->width(), m_target->height());
+	os_log_debug(OE_LOG, "target allocated: %d x %d, view has_art: %{public}s",
+	             m_target->width(), m_target->height(),
+	             m_target->current_view()->has_art() ? "Y" : "N");
 	
 	// ensure we get called on the way out
 	machine.add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(&headless_osd_interface::exit, this));
@@ -765,16 +685,16 @@ void headless_osd_interface::update_dimensions()
 			}
 			
 			os_log_debug(OE_LOG, "screen %d, dimensions %d x %d, "
-			                     "visible area: %d x %d, "
-			                     "physical aspect: %d:%d, "
-			                     "native aspect: %d:%d, "
-			                     "rotated: [%{public}s]",
-			             i,
-			             screen.width(), screen.height(),
-			             screen.visible_area().width(), screen.visible_area().height(),
-			             aspect.first, aspect.second,
-			             native.first, native.second,
-			             rotated ? "Y" : "N");
+								 "visible area: %d x %d, "
+								 "physical aspect: %d:%d, "
+								 "native aspect: %d:%d, "
+								 "rotated: [%{public}s]",
+						 i,
+						 screen.width(), screen.height(),
+						 screen.visible_area().width(), screen.visible_area().height(),
+						 aspect.first, aspect.second,
+						 native.first, native.second,
+						 rotated ? "Y" : "N");
 			i++;
 		}
 	}
@@ -785,19 +705,21 @@ void headless_osd_interface::update_dimensions()
 	// for multiple screens, use the full dimensions
 	std::pair<unsigned, unsigned> aspect;
 	
-	if (iter.count() == 1)
+	if (iter.count() > 1 || m_target->current_view()->has_art())
+	{
+		// for multiple screens or those with artwork, use the full dimensions
+		aspect = std::pair<unsigned, unsigned>(new_size.width(), new_size.height());
+	}
+	else
 	{
 		aspect = first_screen->physical_aspect();
-		bool rotated = (static_cast<unsigned>(first_screen->orientation()) & static_cast<unsigned>(ORIENTATION_SWAP_XY)) == ORIENTATION_SWAP_XY;
+		bool rotated =
+				(static_cast<unsigned>(first_screen->orientation()) & static_cast<unsigned>(ORIENTATION_SWAP_XY)) ==
+				ORIENTATION_SWAP_XY;
 		if (rotated)
 		{
 			std::swap(aspect.first, aspect.second);
 		}
-	}
-	else
-	{
-		// for multiple screens, use the full dimensions
-		aspect = std::pair<unsigned, unsigned>(new_size.width(), new_size.height());
 	}
 	
 	os_log_debug(OE_LOG, "target size change, old_size=%dx%d, new_size=%dx%d, old_fps=%0.3f, new_fps=%0.3f",
