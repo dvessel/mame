@@ -82,6 +82,8 @@ int main(int argc, char *argv[])
 		shared.delegate = [[MyDelegate alloc] initWithOSD:shared];
 		shared.verboseOutput = NO;
 		[shared.options setBasePath:@"/Volumes/GameData/mame"];
+		printf("diff directory: %s\n", shared.options.diffDirectory.UTF8String);
+		
 		[shared setBuffer:malloc(2048*2048*4) size:NSMakeSize(2048, 2048)];
 		
 		NSError *err;

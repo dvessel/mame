@@ -7,6 +7,7 @@ OE_EXPORTED_CLASS
 // macros
 
 #define PATH_PROPERTY(OPT, SET, GET) @property (nonatomic) NSString *GET##Path;
+#define DIRECTORY_PROPERTY(OPT, SET, GET) @property (nonatomic) NSString *GET##Directory;
 #define BOOL_PROPERTY(OPT, SET, GET) @property (nonatomic) BOOL GET
 #define INT_PROPERTY(OPT, SET, GET) @property (nonatomic) NSInteger GET
 #define FLOAT_PROPERTY(OPT, SET, GET) @property (nonatomic) float GET
@@ -24,6 +25,16 @@ PATH_PROPERTY(PLUGINSPATH, Plugins, plugins)
 PATH_PROPERTY(LANGUAGEPATH, Language, language)
 PATH_PROPERTY(NVRAM_DIRECTORY, NVRAM, NVRAM)
 PATH_PROPERTY(CFG_DIRECTORY, CFG, CFG)
+
+#pragma mark - directories
+
+DIRECTORY_PROPERTY(CFG, CFG, CFG)
+DIRECTORY_PROPERTY(NVRAM, NVRAM, NVRAM)
+DIRECTORY_PROPERTY(INPUT, Input, input)
+DIRECTORY_PROPERTY(STATE, State, state)
+DIRECTORY_PROPERTY(SNAPSHOT, Snapshot, snapshot)
+DIRECTORY_PROPERTY(DIFF, Diff, diff)
+DIRECTORY_PROPERTY(COMMENT, Comment, comment)
 
 /*! Sets a common base path for option paths
  *
@@ -63,6 +74,7 @@ BOOL_PROPERTY(FLIPY, FlipY, flipY);
 BOOL_PROPERTY(ARTWORK_CROP, ArtworkCrop, artworkCrop);
 
 #undef PATH_PROPERTY
+#undef DIRECTORY_PROPERTY
 #undef BOOL_PROPERTY
 #undef INT_PROPERTY
 #undef FLOAT_PROPERTY
