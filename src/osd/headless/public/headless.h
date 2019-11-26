@@ -76,23 +76,15 @@ OE_EXPORTED_CLASS
 @property (nonatomic, readonly) InputClass *keyboard;
 @property (nonatomic, readonly) BOOL supportsSave;
 
-/*! Returns the current driver after calling loadGame: */
+/*! Returns the current driver after calling setDriver:withAuditResult:error: */
 @property (nonatomic, readonly) GameDriver *driver;
-
-/*! name of current driver after calling loadGame:
- * */
-@property (nonatomic, readonly) NSString *driverName;
-@property (nonatomic, readonly) NSString *driverFullName;
-@property (nonatomic, readonly) NSString *driverShortName;
-@property (nonatomic, readonly) NSString *softwareName;
 
 /*! maximum size of render buffer in pixels
  */
 @property (nonatomic) NSSize maxBufferSize;
 
-- (BOOL)loadGame:(NSString *)name withAuditResult:(AuditResult **)result error:(NSError **)error;
-- (BOOL)loadDriver:(NSString *)driver withAuditResult:(AuditResult **)result error:(NSError **)error;
-- (BOOL)loadSoftware:(NSString *)name error:(NSError **)error;
+- (BOOL)setDriver:(NSString *)driver withAuditResult:(AuditResult **)result error:(NSError **)error;
+- (BOOL)initializeWithError:(NSError **)error;
 - (void)unload;
 
 #pragma mark - save / load
