@@ -998,6 +998,7 @@ void headless_osd_interface::output_callback(osd_output_channel channel,
     return @(_options->value(OPTION_ ## OPT)); \
 }
 
+#pragma mark - Core search path options
 
 PATH_PROPERTY(MEDIAPATH, Roms, roms)
 
@@ -1017,11 +1018,36 @@ PATH_PROPERTY(PLUGINSPATH, Plugins, plugins)
 
 PATH_PROPERTY(LANGUAGEPATH, Language, language)
 
-PATH_PROPERTY(NVRAM_DIRECTORY, NVRAM, NVRAM)
-
-PATH_PROPERTY(CFG_DIRECTORY, CFG, CFG)
-
 #undef PATH_PROPERTY
+
+#pragma mark - Core directory options
+
+#define DIRECTORY_PROPERTY(OPT, SET, GET) \
+- (void)set##SET##Directory:(NSString *)path \
+{ \
+    _options->set_value(OPTION_ ## OPT ## _DIRECTORY, path.UTF8String, OPTION_PRIORITY_HIGH); \
+} \
+\
+- (NSString *)GET##Directory \
+{ \
+    return @(_options->value(OPTION_ ## OPT ## _DIRECTORY)); \
+}
+
+DIRECTORY_PROPERTY(CFG, CFG, CFG)
+
+DIRECTORY_PROPERTY(NVRAM, NVRAM, NVRAM)
+
+DIRECTORY_PROPERTY(INPUT, Input, input)
+
+DIRECTORY_PROPERTY(STATE, State, state)
+
+DIRECTORY_PROPERTY(SNAPSHOT, Snapshot, snapshot)
+
+DIRECTORY_PROPERTY(DIFF, Diff, diff)
+
+DIRECTORY_PROPERTY(COMMENT, Comment, comment)
+
+#undef DIRECTORY_PROPERTY
 
 - (void)setBasePath:(NSString *)path
 {
@@ -1043,9 +1069,21 @@ PATH_PROPERTY(CFG_DIRECTORY, CFG, CFG)
 	                    OPTION_PRIORITY_HIGH);
 	_options->set_value(OPTION_LANGUAGEPATH, [NSString pathWithComponents:@[path, @"language"]].UTF8String,
 	                    OPTION_PRIORITY_HIGH);
+	
+	// core directory options
+	_options->set_value(OPTION_CFG_DIRECTORY, [NSString pathWithComponents:@[path, @"cfg"]].UTF8String,
+	                    OPTION_PRIORITY_HIGH);
 	_options->set_value(OPTION_NVRAM_DIRECTORY, [NSString pathWithComponents:@[path, @"nvram"]].UTF8String,
 	                    OPTION_PRIORITY_HIGH);
-	_options->set_value(OPTION_CFG_DIRECTORY, [NSString pathWithComponents:@[path, @"cfg"]].UTF8String,
+	_options->set_value(OPTION_INPUT_DIRECTORY, [NSString pathWithComponents:@[path, @"inp"]].UTF8String,
+	                    OPTION_PRIORITY_HIGH);
+	_options->set_value(OPTION_STATE_DIRECTORY, [NSString pathWithComponents:@[path, @"sta"]].UTF8String,
+	                    OPTION_PRIORITY_HIGH);
+	_options->set_value(OPTION_SNAPSHOT_DIRECTORY, [NSString pathWithComponents:@[path, @"snap"]].UTF8String,
+	                    OPTION_PRIORITY_HIGH);
+	_options->set_value(OPTION_DIFF_DIRECTORY, [NSString pathWithComponents:@[path, @"diff"]].UTF8String,
+	                    OPTION_PRIORITY_HIGH);
+	_options->set_value(OPTION_COMMENT_DIRECTORY, [NSString pathWithComponents:@[path, @"comments"]].UTF8String,
 	                    OPTION_PRIORITY_HIGH);
 }
 
