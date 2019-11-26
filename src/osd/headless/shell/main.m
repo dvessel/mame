@@ -86,10 +86,11 @@ int main(int argc, char *argv[])
 		
 		NSError *err;
 		AuditResult *ar;
-		BOOL res = [shared loadGame:@"targ" withAuditResult:&ar error:&err];
+		BOOL res = [shared setDriver:@"targ" withAuditResult:&ar error:&err];
 		if (!res)
 		{
-		
+			
+			return 0;
 		}
 		
 		GameDriver *driver = shared.driver;
@@ -100,6 +101,13 @@ int main(int argc, char *argv[])
 		//res = [shared loadSoftware:@"dkong" error:&err];
 		
 		printf("supports save: %s\n", shared.supportsSave ? "Y" : "N");
+		
+		res = [shared initializeWithError:&err];
+		if (!res)
+		{
+			
+			return 0;
+		}
 		
 		for (int i = 0; i < 500; i++) {
 			[shared execute];
