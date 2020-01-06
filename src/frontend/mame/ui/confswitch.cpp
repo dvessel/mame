@@ -11,6 +11,8 @@
 #include "emu.h"
 #include "ui/confswitch.h"
 
+#include "emuopts.h"
+
 #include <algorithm>
 #include <cstring>
 
@@ -159,6 +161,11 @@ void menu_confswitch::populate(float &customtop, float &custombottom)
 	}
 
 	item_append(menu_item_type::SEPARATOR);
+	
+	if (machine().options().headless()) {
+		return;
+	}
+	
 	item_append(_("Reset"), "", 0, (void *)1);
 }
 
