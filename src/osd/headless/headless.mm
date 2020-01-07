@@ -88,6 +88,7 @@ public:
 	void init(running_machine &machine) override;
 	void exit();
 	void update(bool skip_redraw) override;
+	void input_update() override;
 	
 	// debugger overridables
 	void init_debugger() override
@@ -106,7 +107,7 @@ public:
 	{ return false; };
 	
 	// input overridables
-	void customize_input_type_list(simple_list<input_type_entry> &typelist) override;
+	void customize_input_type_list(std::vector<input_type_entry> &typelist) override;
 	
 	// video overridables
 	void add_audio_to_recording(const int16_t *buffer, int samples_this_frame) override
@@ -763,6 +764,11 @@ void headless_osd_interface::update(bool skip_redraw)
 	}
 }
 
+void headless_osd_interface::input_update()
+{
+	// TODO(sgc): Potentially provide delegate API to update input?
+}
+
 void headless_osd_interface::exit()
 {
 	m_fps = 0.0;
@@ -780,7 +786,7 @@ void headless_osd_interface::update_audio_stream(const int16_t *buffer, int samp
 
 #pragma mark - input overridables
 
-void headless_osd_interface::customize_input_type_list(simple_list<input_type_entry> &typelist)
+void headless_osd_interface::customize_input_type_list(std::vector<input_type_entry> &typelist)
 {
 	// This function is called on startup, before reading the
 	// configuration from disk. Scan the list, and change the
