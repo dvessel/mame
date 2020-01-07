@@ -1,6 +1,6 @@
 #import "driver+private.h"
 #import <emu.h>
-#import "../../frontend/mame/info.h"
+#import "../../frontend/mame/infoxml.h"
 
 OE_STATIC_ASSERT(GameDriverMachineTypeArcade == MACHINE_TYPE_ARCADE);
 OE_STATIC_ASSERT(GameDriverMachineUnemulatedProtection == MACHINE_UNEMULATED_PROTECTION);
