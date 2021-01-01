@@ -1159,7 +1159,7 @@ project "bx"
 			MAME_DIR .. "3rdparty/bx/include/compat/mingw",
 		}
 
-	configuration { "osx* or xcode4" }
+	configuration { "macosx or xcode4" }
 		includedirs {
 			MAME_DIR .. "3rdparty/bx/include/compat/osx",
 		}
@@ -1341,7 +1341,7 @@ end
 			MAME_DIR .. "3rdparty/bx/include/compat/mingw",
 		}
 
-	configuration { "osx* or xcode4" }
+	configuration { "macosx or xcode4" }
 		includedirs {
 			MAME_DIR .. "3rdparty/bx/include/compat/osx",
 		}
