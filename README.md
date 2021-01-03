@@ -7,13 +7,13 @@
 #### release build:
 
 ```sh
-$ make macosx_x64_clang OSD="headless" verbose=1 TARGETOS="macosx" CONFIG="headless-rel" TARGET=mame SUBTARGET=arcade -j8
+$ make macosx_x64_clang OSD="headless" verbose=1 TARGETOS="macosx" CONFIG="headless-rel" TARGET=mame SUBTARGET=arcade MACOSX_DEPLOYMENT_TARGET=10.14 -j8
 ```
 
 #### release build (with ccache):
 
 ```sh
-$ make macosx_x64_clang CC='/usr/local/bin/ccache clang' CXX='/usr/local/bin/ccache clang++' OSD="headless" PRECOMPILE=0 verbose=1 TARGETOS="macosx" CONFIG="headless-rel" TARGET=mame SUBTARGET=arcade -j8
+$ make macosx_x64_clang CC='/usr/local/bin/ccache clang' CXX='/usr/local/bin/ccache clang++' OSD="headless" PRECOMPILE=0 verbose=1 TARGETOS="macosx" CONFIG="headless-rel" TARGET=mame SUBTARGET=arcade MACOSX_DEPLOYMENT_TARGET=10.14 -j8
 ```
 
 `PRECOMPILE=0` ensures precompiled headers are disabled, as ccache has limited compatibility with this feature.
