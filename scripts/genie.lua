@@ -467,9 +467,11 @@ end
 configurations {
 	"Debug",
 	"Release",
+	"headless-rel",
+	"headless-dbg",
 }
 
-if _ACTION == "xcode4" then
+if _ACTION == "xcode4" or _OPTIONS["targetos"]=="macosx" then
 	platforms {
 		"x64",
 	}
@@ -604,6 +606,14 @@ configuration { "gmake or ninja" }
 
 dofile ("toolchain.lua")
 
+-- if _OPTIONS["osd"]=="headless" then
+-- 	configuration { "*" }
+-- 		defines {
+-- 			"__HEADLESS__",
+-- 		}
+-- end
+--
+--
 if _OPTIONS["targetos"]=="windows" then
 	configuration { "x64" }
 		defines {
@@ -636,6 +646,11 @@ if _OPTIONS["PROFILER"]=="1" then
 end
 
 configuration { "Release" }
+	defines {
+		"NDEBUG",
+	}
+
+configuration { "headless-rel" }
 	defines {
 		"NDEBUG",
 	}
