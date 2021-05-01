@@ -124,6 +124,10 @@ project "zlib"
 				"-Wno-shift-negative-value",
 			}
 		end
+		configuration { "cmake" }
+			buildoptions {
+				"-Wno-shift-negative-value",
+			}
 	end
 
 	configuration { "vs*" }
@@ -144,6 +148,11 @@ end
 		}
 
 	configuration { "gmake or ninja" }
+		buildoptions_c {
+			"-Wno-strict-prototypes",
+		}
+
+	configuration { "cmake" }
 		buildoptions_c {
 			"-Wno-strict-prototypes",
 		}
@@ -190,6 +199,11 @@ project "softfloat"
 	}
 
 	configuration { "gmake or ninja" }
+		buildoptions_cpp {
+			"-x c++",
+		}
+
+	configuration { "cmake" }
 		buildoptions_cpp {
 			"-x c++",
 		}
@@ -246,7 +260,11 @@ if _OPTIONS["gcc"]~=nil and not string.find(_OPTIONS["gcc"], "clang") then
 		}
 end
 
-	configuration { "vs*" }
+	configuration { "cmake" }
+buildoptions_cpp {
+	"-x c++",
+	"-Wno-error=implicit-fallthrough",
+}configuration { "vs*" }
 		buildoptions {
 			"/wd4701", -- warning C4701: potentially uninitialized local variable 'xxx' used
 			"/wd4703", -- warning C4703: potentially uninitialized local pointer variable 'xxx' used
@@ -702,6 +720,13 @@ end
 			}
 		end
 	end
+	configuration { "cmake" }
+		buildoptions_c {
+			"-Wno-unused-function",
+			"-O0",
+			"-Wno-enum-conversion",
+			"-Wno-unknown-attributes",
+		}
 	configuration { }
 
 	includedirs {
@@ -764,6 +789,13 @@ end
 
 	configuration { "android-*" }
 		buildoptions {
+			"-Wno-misleading-indentation",
+		}
+
+	configuration { "cmake" }
+		buildoptions_c {
+			"-Wno-strict-prototypes",
+			"-Wno-undef",
 			"-Wno-misleading-indentation",
 		}
 
@@ -866,6 +898,11 @@ project "lua"
 	configuration { "gmake or ninja" }
 		buildoptions_cpp {
 			"-x c++",
+		}
+
+	configuration { "cmake" }
+		buildoptions_c {
+			"-Wno-bad-function-cast"
 		}
 
 	configuration { "vs*" }
@@ -1021,6 +1058,14 @@ if _OPTIONS["gcc"]~=nil then
 		}
 	end
 end
+	configuration { "cmake" }
+		buildoptions_c {
+			"-Wno-bad-function-cast",
+			"-Wno-discarded-qualifiers",
+			"-Wno-undef",
+			"-Wno-unused-but-set-variable",
+			"-Wno-incompatible-pointer-types-discards-qualifiers",
+		}
 	configuration { "vs*" }
 if _OPTIONS["vs"]=="clangcl" then
 		buildoptions {
@@ -1415,6 +1460,14 @@ end
 			"-Wno-unused-variable",
 		}
 
+	configuration { "cmake" }
+		buildoptions {
+			"-Wno-uninitialized",
+			"-Wno-unused-but-set-variable",
+			"-Wno-unused-function",
+			"-Wno-unused-variable",
+		}
+
 	configuration { }
 
 	local version = str_to_version(_OPTIONS["gcc_version"])
@@ -1596,6 +1649,23 @@ project "portaudio"
 			}
 		end
 	end
+	configuration { "cmake" }
+		buildoptions_c {
+			"-Wno-bad-function-cast",
+			"-Wno-missing-braces",
+			"-Wno-strict-prototypes",
+			"-Wno-undef",
+			"-Wno-unknown-pragmas",
+			"-Wno-unused-function",
+			"-Wno-unused-value",
+			"-Wno-unused-variable",
+			"-Wno-unknown-warning-option",
+			"-Wno-absolute-value",
+			"-Wno-unused-but-set-variable",
+			"-Wno-maybe-uninitialized",
+			"-Wno-sometimes-uninitialized",
+			"-Wno-misleading-indentation",
+		}
 	configuration { "vs*" }
 		buildoptions {
 			"/wd4204", -- warning C4204: nonstandard extension used : non-constant aggregate initializer
@@ -1745,6 +1815,11 @@ project "utf8proc"
 			"-Wno-strict-prototypes",
 		}
 
+	configuration { "cmake" }
+		buildoptions_c {
+			"-Wno-strict-prototypes",
+		}
+
 	configuration { }
 
 	files {
@@ -1766,6 +1841,11 @@ project "wdlfft"
 	kind "StaticLib"
 
 	configuration { "gmake or ninja" }
+		buildoptions_c {
+			"-Wno-strict-prototypes",
+		}
+
+	configuration { "cmake" }
 		buildoptions_c {
 			"-Wno-strict-prototypes",
 		}

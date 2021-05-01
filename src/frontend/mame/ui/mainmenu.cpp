@@ -112,6 +112,20 @@ void menu_main::populate()
 {
 	m_phase = machine().phase();
 
+	if (machine().options().headless())
+	{
+		if (ui().machine_info().has_dips())
+			item_append(_("Dip Switches"), "", 0, (void *)SETTINGS_DIP_SWITCHES);
+		if (ui().machine_info().has_configs())
+			item_append(_("Machine Configuration"), "", 0, (void *)SETTINGS_DRIVER_CONFIG);
+
+		item_append(_("Machine Information"), "", 0, (void *)GAME_INFO);
+
+		item_append(menu_item_type::SEPARATOR);
+
+		return;
+	}
+
 	item_append(_("menu-main", "Input Settings"), 0, (void *)INPUT_OPTIONS);
 
 	if (ui().machine_info().has_dips())
@@ -122,6 +136,9 @@ void menu_main::populate()
 	item_append(_("menu-main", "Bookkeeping Info"), 0, (void *)BOOKKEEPING);
 
 	item_append(_("menu-main", "System Information"), 0, (void *)GAME_INFO);
+
+	if (machine().options().headless())
+		goto SKIP_MENUS;
 
 	if (ui().found_machine_warnings())
 		item_append(_("menu-main", "Warning Information"), 0, (void *)WARN_INFO);
@@ -164,6 +181,8 @@ void menu_main::populate()
 
 	if (machine().crosshair().get_usage())
 		item_append(_("menu-main", "Crosshair Options"), 0, (void *)CROSSHAIR);
+
+SKIP_MENUS:
 
 	if (machine().options().cheat())
 		item_append(_("menu-main", "Cheat"), 0, (void *)CHEAT);
