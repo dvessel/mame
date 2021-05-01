@@ -474,7 +474,7 @@ configurations {
 	"Release",
 }
 
-if _ACTION == "xcode4" then
+if _ACTION == "xcode4" or _OPTIONS["targetos"]=="macosx" then
 	platforms {
 		"x64",
 	}
@@ -765,7 +765,7 @@ end
 		"LUA_COMPAT_5_2",
 	}
 
-	if _ACTION == "gmake" or _ACTION == "ninja" then
+	if _ACTION == "gmake" or _ACTION == "ninja" or _ACTION == "cmake" then
 
 	--we compile C-only to C99 standard with GNU extensions
 
@@ -847,7 +847,7 @@ if _OPTIONS["NOWERROR"]==nil then
 end
 
 -- if we are optimizing, include optimization options
-if _OPTIONS["OPTIMIZE"] then
+if _OPTIONS["OPTIMIZE"]~=nil and _OPTIONS["OPTIMIZE"]~="0" then
 	buildoptions {
 		"-O".. _OPTIONS["OPTIMIZE"],
 		"-fno-strict-aliasing"
@@ -1134,6 +1134,24 @@ end
 			end
 		end
 	end
+
+	configuration { "cmake" }
+		buildoptions {
+			"-fdiagnostics-show-note-include-stack",
+			"-Wno-cast-align",
+			"-Wno-constant-logical-operand",
+			"-Wno-extern-c-compat",
+			"-Wno-ignored-qualifiers",
+			"-Wno-pragma-pack", -- clang 6.0 complains when the packing change lifetime is not contained within a header file.
+			"-Wno-tautological-compare",
+			"-Wno-unknown-attributes",
+			"-Wno-unknown-warning-option",
+			"-Wno-unused-value",
+			-- clang 6.0 complains that [[maybe_unused]] is ignored for static data members
+			"-Wno-error=ignored-attributes",
+			"-Wno-error=unused-const-variable",
+			"-Wno-xor-used-as-pow", -- clang 10.0 complains that expressions like 10 ^ 7 look like exponention
+		}
 
 if (_OPTIONS["PLATFORM"]=="alpha") then
 	defines {

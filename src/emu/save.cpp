@@ -376,6 +376,7 @@ save_error save_manager::read_buffer(const void *buf, size_t size)
 			[] () { return true; });
 }
 
+#define DISABLE_CRC 1
 
 //-------------------------------------------------
 //  do_write - serialisation logic
@@ -401,7 +402,11 @@ inline save_error save_manager::do_write(T check_space, U write_block, V start_h
 	header[8] = SAVE_VERSION;
 	header[9] = NATIVE_ENDIAN_VALUE_LE_BE(0, SS_MSB_FIRST);
 	strncpy((char *)&header[0x0a], machine().system().name, 0x1c - 0x0a);
+#if !DISABLE_CRC
 	u32 sig = signature();
+#else
+	u32 sig = 0;
+#endif
 	*(u32 *)&header[0x1c] = little_endianize_int32(sig);
 
 	// write the header and turn on compression for the rest of the file
@@ -447,10 +452,12 @@ inline save_error save_manager::do_read(T check_length, U read_block, V start_he
 	if (!start_header() || !read_block(header, sizeof(header)) || !start_data())
 		return STATERR_READ_ERROR;
 
+#if !DISABLE_CRC
 	// verify the header and report an error if it doesn't match
 	u32 sig = signature();
 	if (validate_header(header, machine().system().name, sig, nullptr, "Error: ")  != STATERR_NONE)
 		return STATERR_INVALID_HEADER;
+#endif
 
 	// determine whether or not to flip the data when done
 	const bool flip = NATIVE_ENDIAN_VALUE_LE_BE((header[9] & SS_MSB_FIRST) != 0, (header[9] & SS_MSB_FIRST) == 0);

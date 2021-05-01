@@ -60,6 +60,20 @@ menu_main::menu_main(mame_ui_manager &mui, render_container &container) : menu(m
 
 void menu_main::populate(float &customtop, float &custombottom)
 {
+	if (machine().options().headless())
+	{
+		if (ui().machine_info().has_dips())
+			item_append(_("Dip Switches"), "", 0, (void *)SETTINGS_DIP_SWITCHES);
+		if (ui().machine_info().has_configs())
+			item_append(_("Machine Configuration"), "", 0, (void *)SETTINGS_DRIVER_CONFIG);
+
+		item_append(_("Machine Information"), "", 0, (void *)GAME_INFO);
+
+		item_append(menu_item_type::SEPARATOR);
+
+		return;
+	}
+
 	/* add main menu items */
 	item_append(_("Input (general)"), 0, (void *)INPUT_GROUPS);
 
@@ -75,6 +89,9 @@ void menu_main::populate(float &customtop, float &custombottom)
 	item_append(_("Bookkeeping Info"), 0, (void *)BOOKKEEPING);
 
 	item_append(_("Machine Information"), 0, (void *)GAME_INFO);
+
+	if (machine().options().headless())
+		goto SKIP_MENUS;
 
 	if (ui().found_machine_warnings())
 		item_append(_("Warning Information"), 0, (void *)WARN_INFO);
@@ -118,6 +135,8 @@ void menu_main::populate(float &customtop, float &custombottom)
 
 	if (machine().crosshair().get_usage())
 		item_append(_("Crosshair Options"), 0, (void *)CROSSHAIR);
+
+SKIP_MENUS:
 
 	if (machine().options().cheat())
 		item_append(_("Cheat"), 0, (void *)CHEAT);
