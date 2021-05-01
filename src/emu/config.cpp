@@ -80,17 +80,22 @@ bool configuration_manager::load_settings()
 			throw emu_fatalerror("Could not load controller file %s.cfg", controller);
 	}
 
-	// next load the defaults file
-	emu_file file(machine().options().cfg_directory(), OPEN_FLAG_READ);
-	std::error_condition filerr = file.open("default.cfg");
-	osd_printf_verbose("Attempting to parse: default.cfg\n");
-	if (!filerr)
-		load_xml(file, config_type::DEFAULT);
+	// leave settings to frontend
+	bool loaded = false;
+	if (machine().options().read_cfg())
+	{
+		// next load the defaults file
+		emu_file file(machine().options().cfg_directory(), OPEN_FLAG_READ);
+		std::error_condition filerr = file.open("default.cfg");
+		osd_printf_verbose("Attempting to parse: default.cfg\n");
+		if (!filerr)
+			load_xml(file, config_type::DEFAULT);
 
-	// finally, load the game-specific file
-	filerr = file.open(machine().basename() + ".cfg");
-	osd_printf_verbose("Attempting to parse: %s.cfg\n",machine().basename());
-	const bool loaded = !filerr && load_xml(file, config_type::SYSTEM);
+		// finally, load the game-specific file
+		filerr = file.open(machine().basename() + ".cfg");
+		osd_printf_verbose("Attempting to parse: %s.cfg\n", machine().basename());
+		loaded = !filerr && load_xml(file, config_type::SYSTEM);
+	}
 
 	// loop over all registrants and call their final function
 	for (const auto &type : m_typelist)
@@ -108,17 +113,19 @@ void configuration_manager::save_settings()
 	for (const auto &type : m_typelist)
 		type.save(config_type::INIT, nullptr);
 
-	// save the defaults file
-	emu_file file(machine().options().cfg_directory(), OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
-	std::error_condition filerr = file.open("default.cfg");
-	if (!filerr)
-		save_xml(file, config_type::DEFAULT);
+	if (machine().options().write_cfg())
+	{
+		// save the defaults file
+		emu_file file(machine().options().cfg_directory(), OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
+		std::error_condition filerr = file.open("default.cfg");
+		if (!filerr)
+			save_xml(file, config_type::DEFAULT);
 
-	// finally, save the system-specific file
-	filerr = file.open(machine().basename() + ".cfg");
-	if (!filerr)
-		save_xml(file, config_type::SYSTEM);
-
+		// finally, save the system-specific file
+		filerr = file.open(machine().basename() + ".cfg");
+		if (!filerr)
+			save_xml(file, config_type::SYSTEM);
+	}
 	// loop over all registrants and call their final function
 	for (const auto &type : m_typelist)
 		type.save(config_type::FINAL, nullptr);
