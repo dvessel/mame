@@ -22,7 +22,11 @@ else
 end
 	project (projname)
 	uuid (os.uuid(_target .. "_" .. _subtarget))
-	kind "ConsoleApp"
+	if _OPTIONS["osd"] == "headless" then
+		kind "SharedLib"
+	else
+		kind "ConsoleApp"
+	end
 
 	configuration { "android*" }
 		targetprefix "lib"
@@ -75,6 +79,17 @@ end
 
 	configuration { }
 
+	if _OPTIONS["osd"] == "headless" then
+		targetsuffix "_headless"
+		targetprefix ""
+		if _OPTIONS["targetos"]=="macosx" then
+    		targetextension ".dylib"
+    	end
+    	flags {
+			"ObjcARC",
+		}
+	end
+
 	if _OPTIONS["targetos"]=="android" then
 		includedirs {
 			MAME_DIR .. "3rdparty/SDL2/include",
@@ -119,9 +134,13 @@ end
 	links {
 		"osd_" .. _OPTIONS["osd"],
 	}
+-- HEADLESS no qt
+if _OPTIONS["osd"]~="headless" then
 	links {
 		"qtdbg_" .. _OPTIONS["osd"],
 	}
+end
+-- HEADLESS no qt
 --if (STANDALONE~=true) then
 	links {
 		"formats",
@@ -185,10 +204,14 @@ end
 			ext_lib("portmidi"),
 		}
 	end
+	if _OPTIONS["osd"]~="headless" then
+        links {
+            "bgfx",
+            "bimg",
+            "bx",
+        }
+	end
 	links {
-		"bgfx",
-		"bimg",
-		"bx",
 		"ocore_" .. _OPTIONS["osd"],
 	}
 
@@ -229,7 +252,7 @@ if (STANDALONE==true) then
 end
 
 if (STANDALONE~=true) then
-	if _OPTIONS["targetos"]=="macosx" and (not override_resources) then
+	if _OPTIONS["targetos"]=="macosx" and (not override_resources) and _OPTIONS["osd"]~="headless" then
 		local plistname = _target .. "_" .. _subtarget .. "-Info.plist"
 		linkoptions {
 			"-sectcreate __TEXT __info_plist " .. _MAKE.esc(GEN_DIR) .. "resource/" .. plistname

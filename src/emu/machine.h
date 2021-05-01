@@ -164,6 +164,10 @@ public:
 	// fetch items by name
 	template <class DeviceClass> [[deprecated("absolute tag lookup; use subdevice or finder instead")]] inline DeviceClass *device(const char *tag) { return downcast<DeviceClass *>(root_device().subdevice(tag)); }
 
+	int headless_init(bool quiet);
+	void headless_run();
+	int headless_deinit();
+
 	// immediate operations
 	int run(bool quiet);
 	void pause();
@@ -365,6 +369,9 @@ public:
 	static void emscripten_save(const char *name);
 	static void emscripten_load(const char *name);
 #endif
+
+	void headless_frame_updated();
+	bool m_frame_updated;
 };
 
 

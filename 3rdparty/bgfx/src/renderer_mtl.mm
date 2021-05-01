@@ -5,7 +5,7 @@
 
 #include "bgfx_p.h"
 
-#if BGFX_CONFIG_RENDERER_METAL
+#if BGFX_CONFIG_RENDERER_METAL || 1
 
 #include "renderer_mtl.h"
 #include "renderer.h"

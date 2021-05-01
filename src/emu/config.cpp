@@ -81,12 +81,17 @@ bool configuration_manager::load_settings()
 			throw emu_fatalerror("Could not load controller configuration file %s.cfg", controller);
 	}
 
-	// next load the defaults file
-	emu_file file(machine().options().cfg_directory(), OPEN_FLAG_READ);
-	attempt_load(machine().system(), file, "default.cfg", config_type::DEFAULT);
+	// leave settings to frontend
+	bool loaded = false;
+	if (machine().options().read_cfg())
+	{
+		// next load the defaults file
+		emu_file file(machine().options().cfg_directory(), OPEN_FLAG_READ);
+		attempt_load(machine().system(), file, "default.cfg", config_type::DEFAULT);
 
-	// load the system-specific file
-	bool const loaded = attempt_load(machine().system(), file, machine().basename() + ".cfg", config_type::SYSTEM);
+		// load the system-specific file
+		loaded = attempt_load(machine().system(), file, machine().basename() + ".cfg", config_type::SYSTEM);
+	}
 
 	// loop over all registrants and call their final function
 	for (auto const &type : m_typelist)
@@ -104,17 +109,19 @@ void configuration_manager::save_settings()
 	for (auto const &type : m_typelist)
 		type.second.save(config_type::INIT, nullptr);
 
-	// save the defaults file
-	emu_file file(machine().options().cfg_directory(), OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
-	std::error_condition filerr = file.open("default.cfg");
-	if (!filerr)
-		save_xml(file, config_type::DEFAULT);
+	if (machine().options().write_cfg())
+	{
+		// save the defaults file
+		emu_file file(machine().options().cfg_directory(), OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
+		std::error_condition filerr = file.open("default.cfg");
+		if (!filerr)
+			save_xml(file, config_type::DEFAULT);
 
-	// finally, save the system-specific file
-	filerr = file.open(machine().basename() + ".cfg");
-	if (!filerr)
-		save_xml(file, config_type::SYSTEM);
-
+		// finally, save the system-specific file
+		filerr = file.open(machine().basename() + ".cfg");
+		if (!filerr)
+			save_xml(file, config_type::SYSTEM);
+	}
 	// loop over all registrants and call their final function
 	for (auto const &type : m_typelist)
 		type.second.save(config_type::FINAL, nullptr);
