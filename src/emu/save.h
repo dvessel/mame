@@ -323,9 +323,9 @@ private:
 
 	// internal helpers
 	template <typename T, typename U, typename V, typename W>
-	save_error do_write(T check_space, U write_block, V start_header, W start_data);
+	save_error do_write(T check_space, U write_block, V start_header, W start_data, bool check_crc = true);
 	template <typename T, typename U, typename V, typename W>
-	save_error do_read(T check_length, U read_block, V start_header, W start_data);
+	save_error do_read(T check_length, U read_block, V start_header, W start_data, bool check_crc = true);
 	u32 signature() const;
 	void dump_registry() const;
 	static save_error validate_header(const u8 *header, const char *gamename, u32 signature, void (CLIB_DECL *errormsg)(const char *fmt, ...), const char *error_prefix);

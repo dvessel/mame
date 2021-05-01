@@ -1130,8 +1130,8 @@ if CPUS["MCS96"] then
 end
 
 if opt_tool(CPUS, "MCS96") then
-	table.insert(disasm_custombuildtask, { MAME_DIR .. "src/devices/cpu/mcs96/mcs96ops.lst",  GEN_DIR .. "emu/cpu/mcs96/i8x9xd.hxx",   { MAME_DIR .. "src/devices/cpu/mcs96/mcs96make.py" }, {"@echo Generating i8x9x disassembler source file...", PYTHON .. " $(1) d i8x9x $(<) $(2) $(@)" }})
-	table.insert(disasm_custombuildtask, { MAME_DIR .. "src/devices/cpu/mcs96/mcs96ops.lst",  GEN_DIR .. "emu/cpu/mcs96/i8xc196d.hxx", { MAME_DIR .. "src/devices/cpu/mcs96/mcs96make.py" }, {"@echo Generating i8xc196 disassembler source file...", PYTHON .. " $(1) d i8xc196 $(<) $(2) $(@)" }})
+	table.insert(disasm_custombuildtask, { MAME_DIR .. "src/devices/cpu/mcs96/mcs96ops.lst",  GEN_DIR .. "emu/cpu/mcs96/i8x9xd.hxx",   { MAME_DIR .. "src/devices/cpu/mcs96/mcs96make.py" }, {"@echo Generating i8x9x disassembler source file...", PYTHON .. " $(1) d i8x9x $(<) $(@)" }})
+	table.insert(disasm_custombuildtask, { MAME_DIR .. "src/devices/cpu/mcs96/mcs96ops.lst",  GEN_DIR .. "emu/cpu/mcs96/i8xc196d.hxx", { MAME_DIR .. "src/devices/cpu/mcs96/mcs96make.py" }, {"@echo Generating i8xc196 disassembler source file...", PYTHON .. " $(1) d i8xc196 $(<) $(@)" }})
 
 	table.insert(disasm_dependency, { MAME_DIR .. "src/devices/cpu/mcs96/i8x9xd.cpp",   GEN_DIR .. "emu/cpu/mcs96/i8x9xd.hxx" })
 	table.insert(disasm_dependency, { MAME_DIR .. "src/devices/cpu/mcs96/i8xc196d.cpp", GEN_DIR .. "emu/cpu/mcs96/i8xc196d.hxx" })
@@ -2590,7 +2590,10 @@ end
 --@src/devices/cpu/tms57002/tms57002.h,CPUS["TMS57002"] = true
 --------------------------------------------------
 
+local have_tms57002 = false
+
 if CPUS["TMS57002"] then
+	have_tms57002 = true
 	files {
 		MAME_DIR .. "src/devices/cpu/tms57002/tms57002.cpp",
 		MAME_DIR .. "src/devices/cpu/tms57002/tms57002.h",

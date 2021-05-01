@@ -1485,6 +1485,25 @@ openbsd_x86: generate $(PROJECTDIR)/$(MAKETYPE)-openbsd/Makefile
 	$(SILENT) $(MAKE) -C $(PROJECTDIR)/$(MAKETYPE)-openbsd config=$(CONFIG)32
 
 #-------------------------------------------------
+# cmake
+#-------------------------------------------------
+
+.PHONY: cmake
+cmake: generate
+	$(SILENT) $(GENIE) $(PARAMS) $(TARGET_PARAMS) --gcc=osx-clang --gcc_version=$(CLANG_VERSION) cmake
+ifneq (posix,$(SHELLTYPE))
+	$(SILENT)echo cmake_minimum_required(VERSION 2.8.4) > CMakeLists.txt
+	$(SILENT)echo add_subdirectory($(PROJECTDIR)/cmake) >> CMakeLists.txt
+else
+	$(SILENT)echo "cmake_minimum_required(VERSION 3.15.1)" > CMakeLists.txt
+	$(SILENT)echo "project($(TARGET)$(SUBTARGET)_$(OSD))" >> CMakeLists.txt
+	$(SILENT)echo "set (CMAKE_CXX_STANDARD 17)" >> CMakeLists.txt
+	$(SILENT)echo "" >> CMakeLists.txt
+	$(SILENT)echo "add_subdirectory(src)" >> CMakeLists.txt
+	$(SILENT)echo "add_subdirectory($(PROJECTDIR)/cmake)" >> CMakeLists.txt
+endif
+
+#-------------------------------------------------
 # Clean/bootstrap
 #-------------------------------------------------
 
