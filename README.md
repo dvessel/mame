@@ -1,3 +1,60 @@
+# **OpenEmu Notes**
+
+## Building .dylib
+
+### arcade (MAME)
+
+#### release build with make:
+
+```sh
+$ make macosx_x64_clang OSD="headless" verbose=1 TARGETOS="macosx" CONFIG="release" TARGET=mame SUBTARGET=arcade MACOSX_DEPLOYMENT_TARGET=10.14 -j8
+```
+
+#### release build with ccache and distcc
+
+The summary of steps are **generate CMake** → **generate Ninja** → **build** as
+ccache and distcc did not work with the GNU make output.
+
+**NOTE:** Needs official build of genie to generate working CMake project
+
+1. Generate a CMake project using official build of genie (for correct CMake output)
+
+    ```sh
+    make cmake GENIE=~/projects/c/genie/bin/darwin/genie OSD="headless" PRECOMPILE=0 verbose=1 TARGETOS="macosx" CONFIG="release" TARGET=mame SUBTARGET=arcade MACOSX_DEPLOYMENT_TARGET=10.14 NOWERROR=1 NO_USE_MIDI=1 DONT_USE_NETWORK=1 NO_USE_PORTAUDIO=1
+    ```
+
+2. Generate a ninja project from the CMake output, using ccache as the compiler launcher
+
+    ```sh
+    cmake -B build/output -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=ccache
+    ```
+
+3. Finally, build the ninja project using `distcc`
+
+    ```sh
+    CCACHE_PREFIX=distcc ninja -C build/output mamearcade_headless -j`distcc -j`
+    ```
+
+### mess (consoles)
+
+### dummy (ColecoVision) (with ccache):
+
+```sh
+make macosx_x64_clang CC='/usr/local/bin/ccache clang' CXX='/usr/local/bin/ccache clang++' OSD="headless" PRECOMPILE=0 OPTIMIZE=0 verbose=1 TARGETOS="macosx" CONFIG="headless-dbg" TARGET=mame SUBTARGET=dummy MACOSX_DEPLOYMENT_TARGET=10.14 -j6
+```
+
+`OPTIMIZE=0` ensures -O0
+
+
+## Generating CMake for CLion:
+
+**NOTE:** Needs official build of genie to generate working CMake project
+
+```sh
+make cmake GENIE=~/projects/c/genie/bin/darwin/genie OSD="headless" PRECOMPILE=0 verbose=1 TARGETOS="macosx" CONFIG="Release" TARGET=mame SUBTARGET=tiny MACOSX_DEPLOYMENT_TARGET=10.14 NOWERROR=1 NO_USE_MIDI=1 DONT_USE_NETWORK=1 NO_USE_PORTAUDIO=1 OPTIMIZE=0
+```
+
+--------
 
 # **MAME** #
 
@@ -5,8 +62,8 @@
 
 Build status:
 
-| OS/Compiler   | Status        | 
-| ------------- |:-------------:| 
+| OS/Compiler   | Status        |
+| ------------- |:-------------:|
 | Linux/GCC and Clang | ![CI (Linux)](https://github.com/mamedev/mame/workflows/CI%20(Linux)/badge.svg) [![Build Status](https://travis-ci.org/mamedev/mame.svg?branch=master)](https://travis-ci.org/mamedev/mame) |
 | Windows/GCC and MSVC | ![CI (Windows)](https://github.com/mamedev/mame/workflows/CI%20(Windows)/badge.svg) |
 | macOS/Clang | ![CI (macOS)](https://github.com/mamedev/mame/workflows/CI%20(macOS)/badge.svg) |
