@@ -538,6 +538,7 @@ static_assert(InputItemID::InputItemID_ABSOLUTE_MAXIMUM == input_item_id::ITEM_I
 @implementation InputDevice
 {
 	input_device *_device;
+	NSMutableDictionary<NSNumber *, InputCallback> *_callbacks;
 }
 
 - (instancetype)initWithDevice:(input_device *)device
@@ -547,7 +548,8 @@ static_assert(InputItemID::InputItemID_ABSOLUTE_MAXIMUM == input_item_id::ITEM_I
 		return nil;
 	}
 
-	_device = device;
+	_device     = device;
+	_callbacks  = [NSMutableDictionary new];
 
 	return self;
 }
@@ -565,6 +567,22 @@ static_assert(InputItemID::InputItemID_ABSOLUTE_MAXIMUM == input_item_id::ITEM_I
 - (NSString *)id
 {
 	return NSSTRING_NO_COPY(_device->id().c_str());
+}
+
+static int32_t block_getter(void *device_internal, void *item_internal)
+{
+	InputCallback block = (__bridge InputCallback)item_internal;
+	return block();
+}
+
+- (InputItemID)addItemNamed:(NSString *)name id:(InputItemID)iid withBlock:(InputCallback)block
+{
+	// capture the assigned InputItemID
+	iid = static_cast<InputItemID>(_device->add_item(name.UTF8String, static_cast<input_item_id>(iid),
+	                                           reinterpret_cast<item_get_state_func>(block_getter), (__bridge void *)block));
+	// maintain a reference to the block, so it isn't released prematurely
+	_callbacks[@(iid)] = block;
+	return iid;
 }
 
 - (InputItemID)addItemNamed:(NSString *)name id:(InputItemID)iid getter:(ItemGetStateFunc)getter context:(void *)context
