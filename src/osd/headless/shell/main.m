@@ -26,6 +26,9 @@
 {
 	printf("initializing\n");
 	InputDevice *joy = [_osd.joystick addDeviceNamed:@"Joy 1"];
+	[joy addItemNamed:@"X axis" id:InputItemID_XAXIS withBlock:^int32_t {
+		return 0;
+	}];
 }
 
 - (void)didChangeDisplayBounds:(NSSize)bounds fps:(double)fps aspect:(NSSize)aspect
@@ -104,7 +107,6 @@ int main(int argc, char *argv[])
 		BOOL res = [shared setDriver:@"targ" withAuditResult:&ar error:&err];
 		if (!res)
 		{
-
 			return 0;
 		}
 

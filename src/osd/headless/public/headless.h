@@ -5,7 +5,7 @@
 @class Options, GameDriver;
 
 // callback for getting the value of an item on a device
-typedef uint32_t (*ItemGetStateFunc)(void *device_internal, void *item_internal);
+typedef int32_t (*ItemGetStateFunc)(void *device_internal, void *item_internal);
 
 extern NSString *const MAMEErrorDomain;
 
@@ -43,6 +43,8 @@ OE_EXPORTED_CLASS
 @interface InputDeviceItem : NSObject
 @end
 
+typedef int32_t (^InputCallback)(void);
+
 OE_EXPORTED_CLASS
 @interface InputDevice : NSObject
 
@@ -50,6 +52,7 @@ OE_EXPORTED_CLASS
 @property (nonatomic, readonly) NSString *name;
 @property (nonatomic, readonly) NSString *id;
 
+- (InputItemID)addItemNamed:(NSString *)name id:(InputItemID)iid withBlock:(InputCallback)block;
 - (InputItemID)addItemNamed:(NSString *)name id:(InputItemID)iid getter:(ItemGetStateFunc)getter context:(void *)context;
 @end
 
