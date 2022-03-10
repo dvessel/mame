@@ -1515,9 +1515,11 @@ ifneq (posix,$(SHELLTYPE))
 	$(SILENT)echo cmake_minimum_required(VERSION 2.8.4) > CMakeLists.txt
 	$(SILENT)echo add_subdirectory($(PROJECTDIR)/cmake) >> CMakeLists.txt
 else
-	$(SILENT)echo "cmake_minimum_required(VERSION 3.15.1)" > CMakeLists.txt
+	$(SILENT)echo "cmake_minimum_required(VERSION 3.22.3)" > CMakeLists.txt
 	$(SILENT)echo "project($(TARGET)$(SUBTARGET)_$(OSD))" >> CMakeLists.txt
-	$(SILENT)echo "set (CMAKE_CXX_STANDARD 17)" >> CMakeLists.txt
+	$(SILENT)echo "set(CMAKE_CXX_STANDARD 17)" >> CMakeLists.txt
+	$(SILENT)echo "set(CMAKE_CXX_STANDARD_REQUIRED ON)" >> CMakeLists.txt
+	$(SILENT)echo "set(CMAKE_CXX_EXTENSIONS OFF)" >> CMakeLists.txt
 	$(SILENT)echo "" >> CMakeLists.txt
 	$(SILENT)echo "add_subdirectory(src)" >> CMakeLists.txt
 	$(SILENT)echo "add_subdirectory($(PROJECTDIR)/cmake)" >> CMakeLists.txt
