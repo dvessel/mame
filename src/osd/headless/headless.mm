@@ -60,8 +60,8 @@ void osd_setup_osd_specific_emu_options(emu_options &opts)
 
 const options_entry osd_options::s_option_entries[] =
 		{
-				{nullptr, nullptr,                OPTION_HEADER, "OSD VIDEO OPTIONS"},
-				{OSDOPTION_VIDEO, OSDOPTVAL_AUTO, OPTION_STRING, "video output method: "},
+				{nullptr, nullptr,                core_options::option_type::HEADER, "OSD VIDEO OPTIONS"},
+				{OSDOPTION_VIDEO, OSDOPTVAL_AUTO, core_options::option_type::STRING, "video output method: "},
 				{nullptr}
 		};
 
@@ -579,7 +579,7 @@ static int32_t block_getter(void *device_internal, void *item_internal)
 {
 	// capture the assigned InputItemID
 	iid = static_cast<InputItemID>(_device->add_item(name.UTF8String, static_cast<input_item_id>(iid),
-	                                           reinterpret_cast<item_get_state_func>(block_getter), (__bridge void *)block));
+	                                           reinterpret_cast<input_device_item::item_get_state_func>(block_getter), (__bridge void *)block));
 	// maintain a reference to the block, so it isn't released prematurely
 	_callbacks[@(iid)] = block;
 	return iid;
@@ -588,7 +588,7 @@ static int32_t block_getter(void *device_internal, void *item_internal)
 - (InputItemID)addItemNamed:(NSString *)name id:(InputItemID)iid getter:(ItemGetStateFunc)getter context:(void *)context
 {
 	return static_cast<InputItemID>(_device->add_item(name.UTF8String, static_cast<input_item_id>(iid),
-	                                                  reinterpret_cast<item_get_state_func>(getter), context));
+	                                                  reinterpret_cast<input_device_item::item_get_state_func>(getter), context));
 }
 
 @end
