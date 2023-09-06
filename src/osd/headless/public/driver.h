@@ -5,18 +5,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 typedef NS_OPTIONS(NSUInteger, GameDriverOptions)
 {
-	/*! coin-operated machine for public use */
-	GameDriverMachineTypeArcade = 0x00000008,
-
-	/*! console system */
-	GameDriverMachineTypeConsole = 0x00000010,
-
-	/*! any kind of computer including home computers, minis, calculators, etc */
-	GameDriverMachineTypeComputer = 0x00000018,
-
-	/*! any other emulated system (e.g. clock, satellite receiver, ...) */
-	GameDriverMachineTypeOther = 0x00000038,
-
 	/*! driver is not in a working state */
 	GameDriverMachineNotWorking = 0x00000040,
 

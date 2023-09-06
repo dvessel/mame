@@ -94,8 +94,10 @@ public:
 	void init(running_machine &machine) override;
 	void exit();
 	void update(bool skip_redraw) override;
-	void input_update() override;
-
+	void input_update(bool relative_reset) override;
+	void check_osd_inputs() override
+	{};
+	
 	// debugger overridables
 	void init_debugger() override
 	{};
@@ -144,7 +146,7 @@ public:
 	{ return nullptr; };
 
 	// osd_output interface ...
-	void output_callback(osd_output_channel channel, util::format_argument_pack<std::ostream> const &args) override;
+	void output_callback(osd_output_channel channel, util::format_argument_pack<char> const &args) override;
 
 	bool verbose() const
 	{ return m_print_verbose; }
@@ -578,7 +580,7 @@ static int32_t block_getter(void *device_internal, void *item_internal)
 - (InputItemID)addItemNamed:(NSString *)name id:(InputItemID)iid withBlock:(InputCallback)block
 {
 	// capture the assigned InputItemID
-	iid = static_cast<InputItemID>(_device->add_item(name.UTF8String, static_cast<input_item_id>(iid),
+	iid = static_cast<InputItemID>(_device->add_item(name.UTF8String, std::string_view(), static_cast<input_item_id>(iid),
 	                                           reinterpret_cast<input_device_item::item_get_state_func>(block_getter), (__bridge void *)block));
 	// maintain a reference to the block, so it isn't released prematurely
 	_callbacks[@(iid)] = block;
@@ -587,7 +589,7 @@ static int32_t block_getter(void *device_internal, void *item_internal)
 
 - (InputItemID)addItemNamed:(NSString *)name id:(InputItemID)iid getter:(ItemGetStateFunc)getter context:(void *)context
 {
-	return static_cast<InputItemID>(_device->add_item(name.UTF8String, static_cast<input_item_id>(iid),
+	return static_cast<InputItemID>(_device->add_item(name.UTF8String, std::string_view(), static_cast<input_item_id>(iid),
 	                                                  reinterpret_cast<input_device_item::item_get_state_func>(getter), context));
 }
 
@@ -788,7 +790,7 @@ void headless_osd_interface::update(bool skip_redraw)
 	}
 }
 
-void headless_osd_interface::input_update()
+void headless_osd_interface::input_update(bool relative_reset)
 {
 	// TODO(sgc): Potentially provide delegate API to update input?
 }
@@ -863,7 +865,7 @@ bool headless_osd_interface::get_font_families(std::string const &font_path,
 #pragma mark - output
 
 void headless_osd_interface::output_callback(osd_output_channel channel,
-                                             util::format_argument_pack<std::ostream> const &args)
+											 util::format_argument_pack<char> const &args)
 {
 	static OSDLogLevel levels[OSD_OUTPUT_CHANNEL_COUNT] = {
 			[OSD_OUTPUT_CHANNEL_ERROR] = OSDLogLevelError,

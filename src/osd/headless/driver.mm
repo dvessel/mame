@@ -3,7 +3,7 @@
 #import <emu.h>
 #import "../../frontend/mame/infoxml.h"
 
-OE_STATIC_ASSERT(GameDriverMachineTypeArcade == MACHINE_TYPE_ARCADE);
+OE_STATIC_ASSERT(GameDriverMachineNotWorking == MACHINE_NOT_WORKING);
 OE_STATIC_ASSERT(GameDriverMachineUnemulatedProtection == MACHINE_UNEMULATED_PROTECTION);
 OE_STATIC_ASSERT(GameDriverMachineImperfectTiming == MACHINE_IMPERFECT_TIMING);
 OE_STATIC_ASSERT(GameDriverMachineIsSkeleton == MACHINE_IS_SKELETON);

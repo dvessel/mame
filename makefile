@@ -1025,9 +1025,11 @@ else
 GCC_VERSION      := $(shell $(TOOLCHAIN)$(subst @,,$(CC)) -dumpfullversion 2> /dev/null)
 endif
 ifeq ($(findstring emcc,$(CC)),emcc)
-CLANG_VERSION    := $(shell $(TOOLCHAIN)$(subst @,,$(CC))  -v  2>&1 >/dev/null | grep 'clang version' | head -n 1 | grep -e 'version [0-9]\+\.[0-9]\+\(\.[0-9]\+\)\?' -o | grep -e '[0-9]\+\.[0-9]\+\(\.[0-9]\+\)\?' -o | tail -n 1)
+CLANG_VERSION    := $(shell $(TOOLCHAIN)$(subst @,,$(CC))    -v  2>&1 >/dev/null | grep 'clang version' | head -n 1 | grep -e 'version [0-9]\+\.[0-9]\+\(\.[0-9]\+\)\?' -o | grep -e '[0-9]\+\.[0-9]\+\(\.[0-9]\+\)\?' -o | tail -n 1)
+else ifeq ($(findstring distcc,$(CC)),distcc)
+CLANG_VERSION    := $(shell $(TOOLCHAIN)$(subst @,,$(CC)) cc --version  2> /dev/null | head -n 1 | grep -e 'version [0-9]\+\.[0-9]\+\(\.[0-9]\+\)\?' -o | grep -e '[0-9]\+\.[0-9]\+\(\.[0-9]\+\)\?' -o | tail -n 1)
 else
-CLANG_VERSION    := $(shell $(TOOLCHAIN)$(subst @,,$(CC))  --version  2> /dev/null | head -n 1 | grep -e 'version [0-9]\+\.[0-9]\+\(\.[0-9]\+\)\?' -o | grep -e '[0-9]\+\.[0-9]\+\(\.[0-9]\+\)\?' -o | tail -n 1)
+CLANG_VERSION    := $(shell $(TOOLCHAIN)$(subst @,,$(CC))    --version  2> /dev/null | head -n 1 | grep -e 'version [0-9]\+\.[0-9]\+\(\.[0-9]\+\)\?' -o | grep -e '[0-9]\+\.[0-9]\+\(\.[0-9]\+\)\?' -o | tail -n 1)
 endif
 PYTHON_AVAILABLE := $(shell $(PYTHON) --version > /dev/null 2>&1 && echo python)
 GIT_AVAILABLE := $(shell git --version > /dev/null 2>&1 && echo git)

@@ -360,7 +360,7 @@ void running_machine::headless_run()
 	m_frame_updated = false;
 	while (!m_frame_updated)
 	{
-		g_profiler.start(PROFILER_EXTRA);
+		auto profile = g_profiler.start(PROFILER_EXTRA);
 
 		// execute CPUs if not paused
 		if (!m_paused)
@@ -372,8 +372,6 @@ void running_machine::headless_run()
 		// handle save/load
 		if (m_saveload_schedule != saveload_schedule::NONE)
 			handle_saveload();
-
-		g_profiler.stop();
 	}
 
 	if ((m_hard_reset_pending || m_exit_pending) && m_saveload_schedule == saveload_schedule::NONE) {
