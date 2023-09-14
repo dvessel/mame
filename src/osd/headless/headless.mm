@@ -25,6 +25,7 @@
 #include "modules/lib/osdlib.h"
 #include "modules/lib/osdobj_common.h"
 #import "../../../frontend/mame/mame.h"
+#include "modules/input/assignmenthelper.h"
 
 // Renderer headers
 #include "rendersw.hxx"
@@ -537,6 +538,34 @@ static_assert(InputItemID::InputItemID_ABSOLUTE_MAXIMUM == input_item_id::ITEM_I
 @implementation InputDeviceItem
 @end
 
+class helper: public osd::joystick_assignment_helper
+{
+public:
+	static void update_assignments(input_device *device)
+	{
+		input_device::assignment_vector assignments;
+		
+		add_directional_assignments(assignments,
+		                            input_item_id::ITEM_ID_XAXIS,
+		                            input_item_id::ITEM_ID_YAXIS,
+		                            ITEM_ID_INVALID,
+		                            ITEM_ID_INVALID,
+		                            ITEM_ID_INVALID,
+		                            ITEM_ID_INVALID);
+		add_button_assignment(assignments, ioport_type(IPT_BUTTON1), { ITEM_ID_BUTTON1 });
+		add_button_assignment(assignments, ioport_type(IPT_BUTTON2), { ITEM_ID_BUTTON2 });
+		add_button_assignment(assignments, ioport_type(IPT_BUTTON3), { ITEM_ID_BUTTON3 });
+		add_button_assignment(assignments, ioport_type(IPT_BUTTON4), { ITEM_ID_BUTTON4 });
+		add_button_assignment(assignments, ioport_type(IPT_BUTTON5), { ITEM_ID_BUTTON5 });
+		add_button_assignment(assignments, ioport_type(IPT_BUTTON6), { ITEM_ID_BUTTON6 });
+		
+		add_button_assignment(assignments, ioport_type(IPT_START), { ITEM_ID_START });
+		add_button_assignment(assignments, ioport_type(IPT_SELECT), { ITEM_ID_SELECT });
+		
+		device->set_default_assignments(std::move(assignments));
+	}
+};
+
 @implementation InputDevice
 {
 	input_device *_device;
@@ -626,6 +655,13 @@ static int32_t block_getter(void *device_internal, void *item_internal)
 {
 	std::string_view nameS(name.UTF8String);
 	auto device = &_class->add_device(nameS, nameS);
+	
+	// add joystick mappings
+	if (_class->devclass() == DEVICE_CLASS_JOYSTICK)
+	{
+		helper::update_assignments(device);
+	}
+	
 	auto dev = [[InputDevice alloc] initWithDevice:device];
 	_devices[static_cast<NSUInteger>(device->devindex())] = dev;
 	return dev;

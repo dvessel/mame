@@ -56,6 +56,10 @@ function osdmodulesbuild()
 		MAME_DIR .. "src/osd/interface/inputman.h",
 		MAME_DIR .. "src/osd/interface/inputseq.cpp",
 		MAME_DIR .. "src/osd/interface/inputseq.h",
+
+		MAME_DIR .. "src/osd/modules/input/assignmenthelper.cpp",
+		MAME_DIR .. "src/osd/modules/input/assignmenthelper.h",
+
 		--[[
 		MAME_DIR .. "src/osd/watchdog.cpp",
 		MAME_DIR .. "src/osd/watchdog.h",
@@ -96,6 +100,7 @@ function osdmodulesbuild()
 		--]]
 	}
 	includedirs {
+	    MAME_DIR .. "src/osd",
 		-- MAME_DIR .. "3rdparty/asio/include",
 	}
 
